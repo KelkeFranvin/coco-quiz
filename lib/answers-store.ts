@@ -42,8 +42,9 @@ export function hasUserSubmitted(username: string): boolean {
 // Funktion zum Zurücksetzen des Antwort-Status für einen Benutzer
 export function resetUserSubmission(username: string): void {
   // Entferne den Benutzer aus userSubmissions
-  const { [username]: _, ...rest } = userSubmissions
-  userSubmissions = rest
+  const newUserSubmissions = { ...userSubmissions }
+  delete newUserSubmissions[username]
+  userSubmissions = newUserSubmissions
   
   // Finde die Antwort des Benutzers
   const userAnswers = answers.filter(answer => answer.username === username)
