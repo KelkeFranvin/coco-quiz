@@ -65,24 +65,26 @@ export default function QuizContainer() {
         if (data.username === username || data.resetAll) {
           console.log('Resetting quiz state for user:', username)
           
-          // Direkt den Status zurücksetzen
-          setHasSubmitted(false)
-          setUserAnswer('')
-          if (inputRef.current) {
-            inputRef.current.focus()
-          }
-
-          // Zusätzlich den Server-Status überprüfen
+          // Warte kurz, damit der Server-Status aktualisiert werden kann
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+          // Server-Status überprüfen
           try {
             const response = await fetch('/api/answers')
+            if (!response.ok) throw new Error('Failed to fetch answers')
+            
             const responseData = await response.json()
             const stillSubmitted = responseData.answers.some(
               (answer: Answer) => answer.username === username
             )
             
-            // Falls der Server-Status nicht mit unserem lokalen Status übereinstimmt
-            if (stillSubmitted) {
-              setHasSubmitted(true)
+            // Status basierend auf Server-Antwort setzen
+            setHasSubmitted(stillSubmitted)
+            if (!stillSubmitted) {
+              setUserAnswer('')
+              if (inputRef.current) {
+                inputRef.current.focus()
+              }
             }
           } catch (error) {
             console.error('Error checking submission status:', error)

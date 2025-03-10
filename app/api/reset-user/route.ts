@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { resetUserSubmission, resetAllUserSubmissions } from "@/lib/answers-store"
+import { resetUserSubmission, resetAllUserSubmissions, hasUserSubmitted } from "@/lib/answers-store"
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +13,14 @@ export async function POST(request: Request) {
 
     if (!username) {
       return NextResponse.json({ error: "Benutzername ist erforderlich" }, { status: 400 })
+    }
+
+    // Prüfe, ob der Benutzer überhaupt eine Antwort hat
+    if (!hasUserSubmitted(username)) {
+      return NextResponse.json({ 
+        success: false, 
+        message: `Benutzer ${username} hat keine aktive Antwort` 
+      }, { status: 400 })
     }
 
     // Benutzer zurücksetzen
