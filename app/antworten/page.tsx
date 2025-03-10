@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Answer } from "@/types/answer"
 import { io } from "socket.io-client"
+import type { Socket } from "socket.io-client"
 
 export default function AnswersPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -18,7 +19,7 @@ export default function AnswersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [resetLoading, setResetLoading] = useState(false)
-  const [socket, setSocket] = useState<any>(null)
+  const [socket, setSocket] = useState<Socket | null>(null)
 
   // Lade Antworten vom Server
   const fetchAnswers = async () => {
@@ -81,6 +82,7 @@ export default function AnswersPage() {
   }
 
   const handleReset = async (username: string) => {
+    setResetLoading(true)
     try {
       const response = await fetch('/api/reset-user', {
         method: 'POST',
@@ -96,13 +98,19 @@ export default function AnswersPage() {
       }
 
       socket?.emit('reset-quiz', { username })
+      await fetchAnswers()
     } catch (error) {
       console.error('Error resetting user:', error)
       alert(error instanceof Error ? error.message : 'Failed to reset user')
+    } finally {
+      setResetLoading(false)
     }
   }
 
   const handleResetAll = async () => {
+    if (!confirm('Möchtest du wirklich alle Benutzer zurücksetzen?')) return
+    
+    setResetLoading(true)
     try {
       const response = await fetch('/api/reset-user', {
         method: 'POST',
@@ -118,9 +126,12 @@ export default function AnswersPage() {
       }
 
       socket?.emit('reset-quiz', { resetAll: true })
+      await fetchAnswers()
     } catch (error) {
       console.error('Error resetting all users:', error)
       alert(error instanceof Error ? error.message : 'Failed to reset all users')
+    } finally {
+      setResetLoading(false)
     }
   }
 
