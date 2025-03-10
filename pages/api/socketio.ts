@@ -2,10 +2,10 @@ import { Server } from 'socket.io'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
-  // @ts-ignore
+  // @ts-expect-error Server implementation type mismatch
   if (!res.socket.server.io) {
     console.log('Initializing Socket.IO server...')
-    // @ts-ignore
+    // @ts-expect-error Server implementation type mismatch
     const io = new Server(res.socket.server, {
       path: '/api/socketio',
       addTrailingSlash: false,
@@ -29,7 +29,7 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
       })
     })
 
-    // @ts-ignore
+    // @ts-expect-error Server implementation type mismatch
     res.socket.server.io = io
   }
 
@@ -42,4 +42,4 @@ export const config = {
   },
 }
 
-export default ioHandler 
+export default ioHandler

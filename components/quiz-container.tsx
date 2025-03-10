@@ -2,11 +2,12 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { io, Socket } from "socket.io-client"
+import type { Answer } from "@/types/answer"
 
 export default function QuizContainer() {
   const [userAnswer, setUserAnswer] = useState("")
@@ -16,6 +17,35 @@ export default function QuizContainer() {
   const [socket, setSocket] = useState<Socket | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  const checkSubmissionStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/answers')
+      const data = await response.json()
+      const userHasSubmitted = data.answers.some(
+        (answer: Answer) => answer.username === username
+      )
+      setHasSubmitted(userHasSubmitted)
+      
+      if (!userHasSubmitted && inputRef.current) {
+        inputRef.current.focus()
+      }
+    } catch (error) {
+      console.error("Fehler beim Prüfen des Antwort-Status:", error)
+    }
+  }, [username])
+
+  // Username and submission status check
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username")
+    if (!storedUsername) {
+      router.push("/")
+      return
+    }
+
+    setUsername(storedUsername)
+    checkSubmissionStatus()
+  }, [router, checkSubmissionStatus])
 
   // Socket.IO setup
   useEffect(() => {
@@ -65,35 +95,6 @@ export default function QuizContainer() {
       }
     })
   }, [username])
-
-  // Username and submission status check
-  useEffect(() => {
-    const storedUsername = localStorage.getItem("username")
-    if (!storedUsername) {
-      router.push("/")
-      return
-    }
-
-    setUsername(storedUsername)
-    checkSubmissionStatus()
-  }, [router])
-
-  const checkSubmissionStatus = async () => {
-    try {
-      const response = await fetch('/api/answers')
-      const data = await response.json()
-      const userHasSubmitted = data.answers.some(
-        (answer: any) => answer.username === username
-      )
-      setHasSubmitted(userHasSubmitted)
-      
-      if (!userHasSubmitted && inputRef.current) {
-        inputRef.current.focus()
-      }
-    } catch (error) {
-      console.error("Fehler beim Prüfen des Antwort-Status:", error)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

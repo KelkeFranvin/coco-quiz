@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 type FloatingElement = {
   id: number
@@ -17,8 +17,12 @@ type FloatingElement = {
 
 export default function FloatingElements() {
   const [elements, setElements] = useState<FloatingElement[]>([])
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
     // Create random floating elements
     const newElements: FloatingElement[] = []
     const elementCount = 15
@@ -140,7 +144,7 @@ export default function FloatingElements() {
   }
 
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
+    <div ref={containerRef} className="fixed inset-0 pointer-events-none overflow-hidden">
       {elements.map((element) => (
         <div
           key={element.id}
