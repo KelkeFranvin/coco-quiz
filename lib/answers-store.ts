@@ -42,7 +42,7 @@ export function hasUserSubmitted(username: string): boolean {
 // Funktion zum Zurücksetzen des Antwort-Status für einen Benutzer
 export function resetUserSubmission(username: string): void {
   // Entferne den Benutzer aus userSubmissions
-  const { [username]: removed, ...rest } = userSubmissions
+  const { [username]: _, ...rest } = userSubmissions
   userSubmissions = rest
   
   // Finde die Antwort des Benutzers

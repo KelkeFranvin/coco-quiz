@@ -77,7 +77,7 @@ export default function QuizContainer() {
             const response = await fetch('/api/answers')
             const responseData = await response.json()
             const stillSubmitted = responseData.answers.some(
-              (answer: any) => answer.username === username
+              (answer: Answer) => answer.username === username
             )
             
             // Falls der Server-Status nicht mit unserem lokalen Status übereinstimmt
@@ -126,9 +126,13 @@ export default function QuizContainer() {
 
       // Emit WebSocket event
       socket?.emit('new-answer', { username })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Fehler:", error)
-      alert(error.message || "Es gab einen Fehler beim Speichern deiner Antwort.")
+      if (error instanceof Error) {
+        alert(error.message)
+      } else {
+        alert("Es gab einen Fehler beim Speichern deiner Antwort.")
+      }
     } finally {
       setIsSubmitting(false)
     }

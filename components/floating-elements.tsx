@@ -38,7 +38,7 @@ export default function FloatingElements() {
         rotationSpeed: (Math.random() - 0.5) * 0.5,
         xSpeed: (Math.random() - 0.5) * 0.5,
         ySpeed: (Math.random() - 0.5) * 0.5,
-        type: ["circle", "square", "triangle", "star"][Math.floor(Math.random() * 4)] as any,
+        type: ["circle", "square", "triangle", "star"][Math.floor(Math.random() * 4)] as "circle" | "square" | "triangle" | "star",
       })
     }
 
@@ -49,14 +49,14 @@ export default function FloatingElements() {
     let lastTime = 0
 
     const animate = (time: number) => {
-      const deltaTime = time - lastTime
+      const deltaTime = (time - lastTime) / 1000 // Konvertiere zu Sekunden
       lastTime = time
 
       setElements((prevElements) =>
         prevElements.map((element) => {
           // Update position
-          let x = element.x + element.xSpeed
-          let y = element.y + element.ySpeed
+          let x = element.x + element.xSpeed * deltaTime * 60 // Normalisiere auf 60 FPS
+          let y = element.y + element.ySpeed * deltaTime * 60
 
           // Wrap around edges
           if (x < -50) x = window.innerWidth + 50

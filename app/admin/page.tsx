@@ -114,16 +114,13 @@ export default function AnswersPage() {
         throw new Error("Fehler beim Zurücksetzen des Benutzers")
       }
 
-      // Warte auf die API-Antwort
-      const data = await response.json()
-      
       // Emit WebSocket event nach erfolgreicher API-Operation
       socket?.emit('reset-quiz', { username })
       
       // Aktualisiere die Antworten nach erfolgreicher Operation
       await fetchAnswers()
       
-      //alert(`Benutzer ${username} wurde zurückgesetzt und kann jetzt erneut antworten.`)
+      alert(`Benutzer ${username} wurde zurückgesetzt und kann jetzt erneut antworten.`)
     } catch (error) {
       console.error("Fehler:", error)
       setError("Fehler beim Zurücksetzen des Benutzers")
@@ -149,16 +146,13 @@ export default function AnswersPage() {
         throw new Error("Fehler beim Zurücksetzen aller Benutzer")
       }
 
-      // Warte auf die API-Antwort
-      const data = await response.json()
-      
       // Emit WebSocket event nach erfolgreicher API-Operation
       socket?.emit('reset-quiz', { resetAll: true })
       
       // Aktualisiere die Antworten nach erfolgreicher Operation
       await fetchAnswers()
       
-      //alert("Alle Benutzer wurden zurückgesetzt und können jetzt erneut antworten.")
+      alert("Alle Benutzer wurden zurückgesetzt und können jetzt erneut antworten.")
     } catch (error) {
       console.error("Fehler:", error)
       setError("Fehler beim Zurücksetzen aller Benutzer")
