@@ -1,35 +1,47 @@
-import { Server } from 'socket.io'
-import type { NextApiRequest, NextApiResponse } from 'next'
+import { Server } from "socket.io"
+import type { NextApiRequest } from "next"
+import type { NextApiResponse } from "next"
+import type { Server as HTTPServer } from "http"
+import type { Socket as NetSocket } from "net"
 
-const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
-  // @ts-expect-error Server implementation type mismatch
+interface SocketServer extends HTTPServer {
+  io?: Server | undefined
+}
+
+interface SocketWithIO extends NetSocket {
+  server: SocketServer
+}
+
+interface NextApiResponseWithSocket extends NextApiResponse {
+  socket: SocketWithIO
+}
+
+const ioHandler = (req: NextApiRequest, res: NextApiResponseWithSocket) => {
   if (!res.socket.server.io) {
-    console.log('Initializing Socket.IO server...')
-    // @ts-expect-error Server implementation type mismatch
     const io = new Server(res.socket.server, {
-      path: '/api/socketio',
+      path: "/api/socketio",
       addTrailingSlash: false,
     })
-    
-    io.on('connection', socket => {
-      console.log('Client connected:', socket.id)
 
-      socket.on('reset-quiz', data => {
-        console.log('Reset quiz event:', data)
-        io.emit('quiz-reset', data)
+    // Socket.IO Events
+    io.on("connection", (socket) => {
+      console.log("Client connected")
+
+      socket.on("new-answer", (data) => {
+        console.log("New answer received:", data)
+        io.emit("answer-submitted", data)
       })
 
-      socket.on('new-answer', data => {
-        console.log('New answer event:', data)
-        io.emit('answer-submitted', data)
+      socket.on("reset-quiz", (data) => {
+        console.log("Quiz reset received:", data)
+        io.emit("quiz-reset", data)
       })
 
-      socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id)
+      socket.on("disconnect", () => {
+        console.log("Client disconnected")
       })
     })
 
-    // @ts-expect-error Server implementation type mismatch
     res.socket.server.io = io
   }
 

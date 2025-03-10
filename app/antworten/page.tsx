@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Answer } from "@/types/answer"
-import { io, Socket } from "socket.io-client"
+import { io } from "socket.io-client"
 
 export default function AnswersPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -18,77 +18,58 @@ export default function AnswersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [resetLoading, setResetLoading] = useState(false)
-  const [socket, setSocket] = useState<Socket | null>(null)
+  const [socket, setSocket] = useState<any>(null)
 
-  // Socket.IO setup
+  // Lade Antworten vom Server
+  const fetchAnswers = async () => {
+    try {
+      const response = await fetch('/api/answers')
+      if (!response.ok) throw new Error('Failed to fetch answers')
+      const data = await response.json()
+      setAnswers(data.answers || [])
+      setResetAnswers(data.resetAnswers || [])
+    } catch (error) {
+      console.error('Error fetching answers:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Socket.IO Setup
   useEffect(() => {
-    const setupSocket = async () => {
+    const initSocket = async () => {
       try {
-        // First, initialize socket connection
         await fetch('/api/socketio')
         const socket = io({
           path: '/api/socketio',
         })
 
         socket.on('connect', () => {
-          console.log('Admin: Connected to Socket.IO')
+          console.log('Admin connected to Socket.IO')
           setSocket(socket)
         })
 
-        socket.on('quiz-reset', async () => {
-          console.log('Admin: Quiz reset event received')
-          await fetchAnswers()
+        socket.on('answer-submitted', () => {
+          console.log('New answer received, refreshing...')
+          fetchAnswers()
         })
 
-        socket.on('answer-submitted', async () => {
-          console.log('Admin: New answer submitted')
-          await fetchAnswers()
+        socket.on('quiz-reset', () => {
+          console.log('Quiz reset event received, refreshing...')
+          fetchAnswers()
         })
 
-        return socket
+        return () => {
+          socket.disconnect()
+        }
       } catch (error) {
-        console.error('Error setting up socket:', error)
-        return null
+        console.error('Socket initialization error:', error)
       }
     }
 
-    let socket: Socket | null = null
-    
-    setupSocket().then(s => {
-      socket = s
-    })
-
-    return () => {
-      if (socket) {
-        socket.disconnect()
-      }
-    }
-  }, []) // Socket-Setup nur einmal beim Mount
-
-  // Lade Antworten, wenn authentifiziert
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchAnswers()
-    }
-  }, [isAuthenticated])
-
-  const fetchAnswers = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/answers")
-      if (!response.ok) {
-        throw new Error("Fehler beim Laden der Antworten")
-      }
-      const data = await response.json()
-      setAnswers(data.answers || [])
-      setResetAnswers(data.resetAnswers || [])
-    } catch (error) {
-      console.error("Fehler:", error)
-      setError("Fehler beim Laden der Antworten")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    initSocket()
+    fetchAnswers()
+  }, [])
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,65 +80,47 @@ export default function AnswersPage() {
     }
   }
 
-  const handleResetUser = async (username: string) => {
-    setResetLoading(true)
+  const handleReset = async (username: string) => {
     try {
-      const response = await fetch("/api/reset-user", {
-        method: "POST",
+      const response = await fetch('/api/reset-user', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username }),
       })
 
       if (!response.ok) {
-        throw new Error("Fehler beim Zurücksetzen des Benutzers")
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to reset user')
       }
 
-      // Emit WebSocket event nach erfolgreicher API-Operation
       socket?.emit('reset-quiz', { username })
-      
-      // Aktualisiere die Antworten nach erfolgreicher Operation
-      await fetchAnswers()
-      
-      alert(`Benutzer ${username} wurde zurückgesetzt und kann jetzt erneut antworten.`)
     } catch (error) {
-      console.error("Fehler:", error)
-      setError("Fehler beim Zurücksetzen des Benutzers")
-    } finally {
-      setResetLoading(false)
+      console.error('Error resetting user:', error)
+      alert(error instanceof Error ? error.message : 'Failed to reset user')
     }
   }
 
   const handleResetAll = async () => {
-    if (!confirm("Möchtest du wirklich alle Benutzer zurücksetzen?")) return
-
-    setResetLoading(true)
     try {
-      const response = await fetch("/api/reset-user", {
-        method: "POST",
+      const response = await fetch('/api/reset-user', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ resetAll: true }),
       })
 
       if (!response.ok) {
-        throw new Error("Fehler beim Zurücksetzen aller Benutzer")
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to reset all users')
       }
 
-      // Emit WebSocket event nach erfolgreicher API-Operation
       socket?.emit('reset-quiz', { resetAll: true })
-      
-      // Aktualisiere die Antworten nach erfolgreicher Operation
-      await fetchAnswers()
-      
-      alert("Alle Benutzer wurden zurückgesetzt und können jetzt erneut antworten.")
     } catch (error) {
-      console.error("Fehler:", error)
-      setError("Fehler beim Zurücksetzen aller Benutzer")
-    } finally {
-      setResetLoading(false)
+      console.error('Error resetting all users:', error)
+      alert(error instanceof Error ? error.message : 'Failed to reset all users')
     }
   }
 
@@ -261,7 +224,7 @@ export default function AnswersPage() {
                             <CardDescription>{new Date(answer.timestamp).toLocaleString("de-DE")}</CardDescription>
                           </div>
                           <Button
-                            onClick={() => handleResetUser(answer.username)}
+                            onClick={() => handleReset(answer.username)}
                             disabled={resetLoading}
                             size="sm"
                             variant="outline"

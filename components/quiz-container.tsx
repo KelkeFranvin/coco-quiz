@@ -49,53 +49,43 @@ export default function QuizContainer() {
 
   // Socket.IO setup
   useEffect(() => {
-    // First, initialize socket connection
-    fetch('/api/socketio').finally(() => {
-      const socket = io({
-        path: '/api/socketio',
-      })
+    // Socket.IO Initialisierung
+    const initSocket = async () => {
+      try {
+        await fetch('/api/socketio')
+        const socket = io({
+          path: '/api/socketio',
+        })
 
-      socket.on('connect', () => {
-        console.log('Connected to Socket.IO')
-        setSocket(socket)
-      })
+        socket.on('connect', () => {
+          console.log('Connected to Socket.IO server')
+          setSocket(socket)
+        })
 
-      socket.on('quiz-reset', async (data) => {
-        console.log('Quiz reset event received:', data)
-        if (data.username === username || data.resetAll) {
-          console.log('Resetting quiz state for user:', username)
-          
-          // Warte kurz, damit der Server-Status aktualisiert werden kann
-          await new Promise(resolve => setTimeout(resolve, 100))
-          
-          // Server-Status überprüfen
-          try {
-            const response = await fetch('/api/answers')
-            if (!response.ok) throw new Error('Failed to fetch answers')
-            
-            const responseData = await response.json()
-            const stillSubmitted = responseData.answers.some(
-              (answer: Answer) => answer.username === username
-            )
-            
-            // Status basierend auf Server-Antwort setzen
-            setHasSubmitted(stillSubmitted)
-            if (!stillSubmitted) {
-              setUserAnswer('')
-              if (inputRef.current) {
-                inputRef.current.focus()
-              }
+        socket.on('quiz-reset', async (data) => {
+          console.log('Quiz reset event received:', data)
+          if (data.username === username || data.resetAll) {
+            setHasSubmitted(false)
+            setUserAnswer('')
+            if (inputRef.current) {
+              inputRef.current.focus()
             }
-          } catch (error) {
-            console.error('Error checking submission status:', error)
           }
-        }
-      })
+        })
 
-      return () => {
-        socket.disconnect()
+        socket.on('answer-submitted', (data) => {
+          console.log('New answer submitted:', data)
+        })
+
+        return () => {
+          socket.disconnect()
+        }
+      } catch (error) {
+        console.error('Socket initialization error:', error)
       }
-    })
+    }
+
+    initSocket()
   }, [username])
 
   const handleSubmit = async (e: React.FormEvent) => {
