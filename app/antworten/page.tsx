@@ -23,6 +23,7 @@ export default function AnswersPage() {
 
   // Lade Antworten vom Server
   const fetchAnswers = useCallback(async () => {
+    setIsLoading(true)
     try {
       const response = await fetch('/api/answers')
       if (!response.ok) throw new Error('Failed to fetch answers')
@@ -31,6 +32,7 @@ export default function AnswersPage() {
       setResetAnswers(data.resetAnswers || [])
     } catch (error) {
       console.error('Error fetching answers:', error)
+      setError('Failed to load answers')
     } finally {
       setIsLoading(false)
     }
@@ -48,7 +50,6 @@ export default function AnswersPage() {
         socket.on('connect', () => {
           console.log('Admin connected to Socket.IO')
           setSocket(socket)
-          setIsLoading(true)
           void fetchAnswers()
         })
 
@@ -87,11 +88,15 @@ export default function AnswersPage() {
       } catch (error) {
         console.error('Socket initialization error:', error)
         setIsLoading(false)
+        setError('Failed to connect to socket')
       }
     }
 
     if (isAuthenticated) {
+      setIsLoading(true)
       void initSocket()
+    } else {
+      setIsLoading(false)
     }
   }, [isAuthenticated, fetchAnswers])
 
@@ -108,6 +113,7 @@ export default function AnswersPage() {
     if (resetLoading) return
     
     setResetLoading(true)
+    setError('') // Clear previous errors
     try {
       const response = await fetch('/api/reset-user', {
         method: 'POST',
@@ -118,17 +124,21 @@ export default function AnswersPage() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to reset user')
+        throw new Error('Failed to reset user')
       }
 
       socket?.emit('quiz-reset', { username })
-      void fetchAnswers()
+      
+      // Delay fetchAnswers to allow server to process the reset
+      setTimeout(() => {
+        void fetchAnswers()
+        setResetLoading(false)
+      }, 500)
     } catch (error) {
       console.error('Error resetting user:', error)
-      alert(error instanceof Error ? error.message : 'Failed to reset user')
-    } finally {
+      setError('Failed to reset user')
       setResetLoading(false)
+      alert(error instanceof Error ? error.message : 'Failed to reset user')
     }
   }
 
@@ -137,6 +147,7 @@ export default function AnswersPage() {
     if (!confirm('Möchtest du wirklich alle Benutzer zurücksetzen?')) return
     
     setResetLoading(true)
+    setError('') // Clear previous errors
     try {
       const response = await fetch('/api/reset-user', {
         method: 'POST',
@@ -147,17 +158,21 @@ export default function AnswersPage() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to reset all users')
+        throw new Error('Failed to reset all users')
       }
 
       socket?.emit('quiz-reset', { resetAll: true })
-      void fetchAnswers()
+      
+      // Delay fetchAnswers to allow server to process the reset
+      setTimeout(() => {
+        void fetchAnswers()
+        setResetLoading(false)
+      }, 500)
     } catch (error) {
       console.error('Error resetting all users:', error)
-      alert(error instanceof Error ? error.message : 'Failed to reset all users')
-    } finally {
+      setError('Failed to reset all users')
       setResetLoading(false)
+      alert(error instanceof Error ? error.message : 'Failed to reset all users')
     }
   }
 
@@ -217,102 +232,67 @@ export default function AnswersPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Aktuelle Antworten */}
-            <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">Aktuelle Antworten</h2>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleResetAll}
-                    disabled={resetLoading}
-                    variant="outline"
-                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
-                  >
-                    Alle zurücksetzen
-                  </Button>
-                  <Link href="/quiz">
-                    <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                      Zurück zum Quiz
-                    </Button>
-                  </Link>
-                </div>
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Aktuelle Antworten</h1>
+              <div className="flex space-x-4">
+                <Button variant="outline" asChild>
+                  <Link href="/">Zurück zur Startseite</Link>
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleResetAll}
+                  disabled={resetLoading}
+                >
+                  {resetLoading ? "Wird zurückgesetzt..." : "Alle zurücksetzen"}
+                </Button>
               </div>
-
-              {isLoading ? (
-                <div className="text-center py-12">
-                  <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-white">Lade Antworten...</p>
-                </div>
-              ) : answers.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
-                  <p className="text-xl">Noch keine Antworten vorhanden</p>
-                  <p className="mt-2">Warte auf Antworten der Teilnehmer</p>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {answers.map((answer) => (
-                    <Card key={answer.id} className="bg-black/40 border-white/10">
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <CardTitle className="text-lg text-white">
-                              <span className="text-purple-400">{answer.username}</span> - Antwort #{answer.id}
-                            </CardTitle>
-                            <CardDescription>{new Date(answer.timestamp).toLocaleString("de-DE")}</CardDescription>
-                          </div>
-                          <Button
-                            onClick={() => handleReset(answer.username)}
-                            disabled={resetLoading}
-                            size="sm"
-                            variant="outline"
-                            className="bg-black/30 border-white/20 text-white hover:bg-white/10"
-                          >
-                            Zurücksetzen
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-white text-lg">{answer.answer}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
             </div>
 
-            {/* Zurückgesetzte Antworten */}
-            <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
-              <h2 className="text-2xl font-bold text-white mb-6">Vorherige Antworten</h2>
-              
-              {resetAnswers.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
-                  <p className="text-xl">Keine zurückgesetzten Antworten</p>
-                  <p className="mt-2">Hier erscheinen Antworten, die zurückgesetzt wurden</p>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {resetAnswers.map((answer) => (
-                    <Card key={`${answer.id}-${answer.resetTimestamp}`} className="bg-black/40 border-white/10">
-                      <CardHeader className="pb-2">
+            {error && (
+              <div className="backdrop-blur-lg bg-red-500/30 rounded-2xl border border-red-500/20 p-4 my-4">
+                <p className="text-white">{error}</p>
+              </div>
+            )}
+
+            {isLoading ? (
+              <div className="flex justify-center py-10">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
+              </div>
+            ) : answers.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <p className="text-xl">Noch keine Antworten vorhanden</p>
+                <p className="mt-2">Warte auf Antworten der Teilnehmer</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {answers.map((answer) => (
+                  <Card key={answer.id} className="bg-black/40 border-white/10">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-center">
                         <div>
                           <CardTitle className="text-lg text-white">
                             <span className="text-purple-400">{answer.username}</span> - Antwort #{answer.id}
                           </CardTitle>
-                          <CardDescription>
-                            Eingereicht: {new Date(answer.timestamp).toLocaleString("de-DE")}
-                            <br />
-                            Zurückgesetzt: {answer.resetTimestamp ? new Date(answer.resetTimestamp).toLocaleString("de-DE") : "Unbekannt"}
-                          </CardDescription>
+                          <CardDescription>{new Date(answer.timestamp).toLocaleString("de-DE")}</CardDescription>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-white text-lg">{answer.answer}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
+                        <Button
+                          onClick={() => handleReset(answer.username)}
+                          disabled={resetLoading}
+                          size="sm"
+                          variant="outline"
+                          className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                        >
+                          Zurücksetzen
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-white text-lg">{answer.answer}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

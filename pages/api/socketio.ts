@@ -28,12 +28,12 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponseWithSocket) => {
     io.on("connection", (socket) => {
       console.log("Client connected:", socket.id)
 
-      socket.on("new-answer", (data) => {
+      socket.on("submit-answer", (data) => {
         console.log("New answer event:", data)
         io.emit("answer-submitted", data)
       })
 
-      socket.on("reset-quiz", (data) => {
+      socket.on("quiz-reset", (data) => {
         console.log("Reset quiz event:", data)
         io.emit("quiz-reset", data)
       })

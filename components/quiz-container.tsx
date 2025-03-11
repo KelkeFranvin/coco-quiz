@@ -111,19 +111,12 @@ export default function QuizContainer() {
       })
 
       if (!response.ok) {
-        let errorMessage = 'Failed to submit answer'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.message || errorMessage
-        } catch {
-          // If response is not JSON, use text or default message
-          errorMessage = await response.text() || errorMessage
-        }
-        throw new Error(errorMessage)
+        // Don't try to parse the response, just use status text
+        throw new Error(`Failed to submit answer: ${response.statusText || 'Unknown error'}`)
       }
 
       // Only emit socket event and update state if submission was successful
-      socket?.emit('answer-submitted', { username, answer: userAnswer })
+      socket?.emit('submit-answer', { username, answer: userAnswer })
       setHasSubmitted(true)
       setUserAnswer('')
       void checkSubmissionStatus() // Update answer count
