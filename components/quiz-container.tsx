@@ -92,6 +92,9 @@ export default function QuizContainer() {
         // Wenn eine neue Antwort eingereicht wurde
         socket.on('answer-submitted', (data: { username: string; answer: string }) => {
           console.log('New answer submitted by:', data.username)
+          if (data.username === username) {
+            setHasSubmitted(true)
+          }
           void fetchAnswerCount()
         })
 
@@ -131,12 +134,13 @@ export default function QuizContainer() {
         throw new Error('Failed to submit answer')
       }
 
-      setHasSubmitted(true)
       // Sende Socket.IO Event für neue Antwort
       socket?.emit('new-answer', {
         username,
         answer: userAnswer.trim(),
       })
+      
+      // Leere das Eingabefeld
       setUserAnswer('')
     } catch (error) {
       console.error('Error submitting answer:', error)
