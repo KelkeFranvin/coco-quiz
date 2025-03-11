@@ -50,15 +50,38 @@ export default function AnswersPage() {
           setSocket(socket)
         })
 
-        socket.on('answer-submitted', () => {
-          console.log('New answer received, refreshing...')
-          fetchAnswers()
+        // Wenn eine neue Antwort eingereicht wurde
+        socket.on('answer-submitted', (data: { username: string }) => {
+          console.log('New answer received:', data)
+          // Sofort die Antworten neu laden
+          void fetchAnswers()
+          // Benachrichtigung anzeigen
+          if (Notification.permission === 'granted') {
+            void new Notification('Neue Antwort', {
+              body: `${data.username} hat eine neue Antwort eingereicht`,
+            })
+          }
         })
 
-        socket.on('quiz-reset', () => {
-          console.log('Quiz reset event received, refreshing...')
-          fetchAnswers()
+        // Wenn ein Quiz zurückgesetzt wurde
+        socket.on('quiz-reset', (data: { username?: string; resetAll?: boolean }) => {
+          console.log('Quiz reset event received:', data)
+          // Sofort die Antworten neu laden
+          void fetchAnswers()
+          // Benachrichtigung anzeigen
+          if (Notification.permission === 'granted') {
+            void new Notification('Quiz zurückgesetzt', {
+              body: data.resetAll 
+                ? 'Alle Antworten wurden zurückgesetzt'
+                : `Die Antwort von ${data.username} wurde zurückgesetzt`,
+            })
+          }
         })
+
+        // Benachrichtigungen aktivieren
+        if (Notification.permission === 'default') {
+          void Notification.requestPermission()
+        }
 
         return () => {
           socket.disconnect()
@@ -68,9 +91,11 @@ export default function AnswersPage() {
       }
     }
 
-    initSocket()
-    fetchAnswers()
-  }, [])
+    if (isAuthenticated) {
+      void initSocket()
+      void fetchAnswers()
+    }
+  }, [isAuthenticated, fetchAnswers])
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()

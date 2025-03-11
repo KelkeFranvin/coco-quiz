@@ -17,6 +17,19 @@ export default function QuizContainer() {
   const [socket, setSocket] = useState<Socket | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const [answerCount, setAnswerCount] = useState(0)
+
+  // Funktion zum Abrufen der Antwortanzahl
+  const fetchAnswerCount = useCallback(async () => {
+    try {
+      const response = await fetch('/api/answers')
+      if (!response.ok) throw new Error('Failed to fetch answer count')
+      const data = await response.json()
+      setAnswerCount(data.answers.length)
+    } catch (error) {
+      console.error('Error fetching answer count:', error)
+    }
+  }, [])
 
   const checkSubmissionStatus = useCallback(async () => {
     try {
@@ -58,11 +71,12 @@ export default function QuizContainer() {
         })
 
         socket.on('connect', () => {
-          console.log('Connected to Socket.IO server')
+          console.log('Quiz connected to Socket.IO')
           setSocket(socket)
         })
 
-        socket.on('quiz-reset', async (data) => {
+        // Wenn der Benutzer zurückgesetzt wurde
+        socket.on('quiz-reset', (data: { username?: string; resetAll?: boolean }) => {
           console.log('Quiz reset event received:', data)
           if (data.username === username || data.resetAll) {
             setHasSubmitted(false)
@@ -73,8 +87,11 @@ export default function QuizContainer() {
           }
         })
 
-        socket.on('answer-submitted', (data) => {
-          console.log('New answer submitted:', data)
+        // Wenn eine neue Antwort eingereicht wurde
+        socket.on('answer-submitted', () => {
+          console.log('New answer submitted')
+          // Aktualisiere die Anzahl der Antworten
+          void fetchAnswerCount()
         })
 
         return () => {
@@ -85,46 +102,47 @@ export default function QuizContainer() {
       }
     }
 
-    initSocket()
-  }, [username])
+    if (username) {
+      void initSocket()
+      // Initial answer count
+      void fetchAnswerCount()
+    }
+  }, [username, fetchAnswerCount])
 
+  // Antwort einreichen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!userAnswer.trim() || hasSubmitted) return
 
     setIsSubmitting(true)
-
     try {
-      // Sende die Antwort an die API
-      const response = await fetch("/api/answers", {
-        method: "POST",
+      const response = await fetch('/api/answers', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          answer: userAnswer,
-          username: username,
+          username,
+          answer: userAnswer.trim(),
         }),
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Fehler beim Speichern der Antwort")
+        throw new Error('Failed to submit answer')
       }
 
-      // Erfolgreich gespeichert
-      setUserAnswer("")
       setHasSubmitted(true)
-
-      // Emit WebSocket event
-      socket?.emit('new-answer', { username })
-    } catch (error: unknown) {
-      console.error("Fehler:", error)
-      if (error instanceof Error) {
-        alert(error.message)
-      } else {
-        alert("Es gab einen Fehler beim Speichern deiner Antwort.")
-      }
+      // Sende Socket.IO Event für neue Antwort
+      socket?.emit('new-answer', {
+        username,
+        answer: userAnswer.trim(),
+      })
+      
+      // Aktualisiere die Anzahl der Antworten
+      void fetchAnswerCount()
+    } catch (error) {
+      console.error('Error submitting answer:', error)
+      alert('Fehler beim Einreichen der Antwort. Bitte versuche es erneut.')
     } finally {
       setIsSubmitting(false)
     }
