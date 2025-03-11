@@ -73,7 +73,6 @@ export default function QuizContainer() {
         socket.on('connect', () => {
           console.log('Quiz connected to Socket.IO')
           setSocket(socket)
-          // Initial data fetch
           void fetchAnswerCount()
         })
 
@@ -87,20 +86,13 @@ export default function QuizContainer() {
               inputRef.current.focus()
             }
           }
-          // Aktualisiere die Anzahl nach Reset
           void fetchAnswerCount()
         })
 
         // Wenn eine neue Antwort eingereicht wurde
-        socket.on('answer-submitted', (data: { username: string }) => {
+        socket.on('answer-submitted', (data: { username: string; answer: string }) => {
           console.log('New answer submitted by:', data.username)
-          // Aktualisiere die Anzahl der Antworten
           void fetchAnswerCount()
-          // Wenn es unsere eigene Antwort ist, setze den Status
-          if (data.username === username) {
-            setHasSubmitted(true)
-            setUserAnswer('')
-          }
         })
 
         return () => {
@@ -113,13 +105,14 @@ export default function QuizContainer() {
 
     if (username) {
       void initSocket()
+      void fetchAnswerCount()
     }
   }, [username, fetchAnswerCount])
 
   // Antwort einreichen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!userAnswer.trim() || hasSubmitted) return
+    if (!userAnswer.trim() || hasSubmitted || isSubmitting) return
 
     setIsSubmitting(true)
     try {
@@ -138,19 +131,19 @@ export default function QuizContainer() {
         throw new Error('Failed to submit answer')
       }
 
+      setHasSubmitted(true)
       // Sende Socket.IO Event für neue Antwort
       socket?.emit('new-answer', {
         username,
         answer: userAnswer.trim(),
       })
+      setUserAnswer('')
     } catch (error) {
       console.error('Error submitting answer:', error)
       alert('Fehler beim Einreichen der Antwort. Bitte versuche es erneut.')
+    } finally {
       setIsSubmitting(false)
-      return
     }
-
-    setIsSubmitting(false)
   }
 
   return (

@@ -48,16 +48,13 @@ export default function AnswersPage() {
         socket.on('connect', () => {
           console.log('Admin connected to Socket.IO')
           setSocket(socket)
-          // Initial data fetch
           void fetchAnswers()
         })
 
         // Wenn eine neue Antwort eingereicht wurde
         socket.on('answer-submitted', (data: { username: string; answer: string }) => {
           console.log('New answer received:', data)
-          // Sofort die Antworten neu laden
           void fetchAnswers()
-          // Benachrichtigung anzeigen
           if (Notification.permission === 'granted') {
             void new Notification('Neue Antwort', {
               body: `${data.username} hat eine neue Antwort eingereicht: "${data.answer}"`,
@@ -68,9 +65,7 @@ export default function AnswersPage() {
         // Wenn ein Quiz zurückgesetzt wurde
         socket.on('quiz-reset', (data: { username?: string; resetAll?: boolean }) => {
           console.log('Quiz reset event received:', data)
-          // Sofort die Antworten neu laden
           void fetchAnswers()
-          // Benachrichtigung anzeigen
           if (Notification.permission === 'granted') {
             void new Notification('Quiz zurückgesetzt', {
               body: data.resetAll 
@@ -108,6 +103,8 @@ export default function AnswersPage() {
   }
 
   const handleReset = async (username: string) => {
+    if (resetLoading) return
+    
     setResetLoading(true)
     try {
       const response = await fetch('/api/reset-user', {
@@ -123,7 +120,6 @@ export default function AnswersPage() {
         throw new Error(error.message || 'Failed to reset user')
       }
 
-      // Sende Socket.IO Event für Reset
       socket?.emit('reset-quiz', { username })
     } catch (error) {
       console.error('Error resetting user:', error)
@@ -134,6 +130,7 @@ export default function AnswersPage() {
   }
 
   const handleResetAll = async () => {
+    if (resetLoading) return
     if (!confirm('Möchtest du wirklich alle Benutzer zurücksetzen?')) return
     
     setResetLoading(true)
@@ -151,7 +148,6 @@ export default function AnswersPage() {
         throw new Error(error.message || 'Failed to reset all users')
       }
 
-      // Sende Socket.IO Event für Reset
       socket?.emit('reset-quiz', { resetAll: true })
     } catch (error) {
       console.error('Error resetting all users:', error)
