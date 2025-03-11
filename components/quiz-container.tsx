@@ -90,7 +90,7 @@ export default function QuizContainer() {
     }
 
     void initSocket()
-  }, [username])
+  }, [username, checkSubmissionStatus])
 
   // Antwort einreichen
   const handleSubmit = async (e: React.FormEvent) => {

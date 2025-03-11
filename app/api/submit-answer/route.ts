@@ -25,6 +25,7 @@ async function getAnswers() {
       return JSON.parse(data)
     } catch (error) {
       // Falls die Datei nicht existiert oder nicht gültig ist, erstelle eine neue
+      console.log('Creating new answers file:', error)
       const initialData = { answers: [], resetAnswers: [] }
       await fs.writeFile(answersFilePath, JSON.stringify(initialData, null, 2))
       return initialData

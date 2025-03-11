@@ -293,6 +293,40 @@ export default function AnswersPage() {
                 ))}
               </div>
             )}
+
+            {/* Zurückgesetzte Antworten */}
+            <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8 mt-8">
+              <h2 className="text-2xl font-bold text-white mb-6">Vorherige Antworten</h2>
+              
+              {resetAnswers.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <p className="text-xl">Keine zurückgesetzten Antworten</p>
+                  <p className="mt-2">Hier erscheinen Antworten, die zurückgesetzt wurden</p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {resetAnswers.map((answer) => (
+                    <Card key={`${answer.id}-${answer.resetTimestamp}`} className="bg-black/40 border-white/10">
+                      <CardHeader className="pb-2">
+                        <div>
+                          <CardTitle className="text-lg text-white">
+                            <span className="text-purple-400">{answer.username}</span> - Antwort #{answer.id}
+                          </CardTitle>
+                          <CardDescription>
+                            Eingereicht: {new Date(answer.timestamp).toLocaleString("de-DE")}
+                            <br />
+                            Zurückgesetzt: {answer.resetTimestamp ? new Date(answer.resetTimestamp).toLocaleString("de-DE") : "Unbekannt"}
+                          </CardDescription>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-white text-lg">{answer.answer}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
