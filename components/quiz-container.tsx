@@ -156,8 +156,13 @@ export default function QuizContainer() {
         </h1>
         <div className="h-1 w-32 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto rounded-full mb-4"></div>
 
-        {/* Benutzername anzeigen */}
-        <p className="text-white/80 text-lg mb-2">Hallo, {username}!</p>
+        {/* Benutzername und Antwortanzahl anzeigen */}
+        <div className="space-y-2">
+          <p className="text-white/80 text-lg">Hallo, {username}!</p>
+          <p className="text-white/60">
+            {answerCount} {answerCount === 1 ? 'Antwort' : 'Antworten'} bisher
+          </p>
+        </div>
       </div>
 
       <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
