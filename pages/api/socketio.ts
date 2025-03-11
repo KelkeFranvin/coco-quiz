@@ -18,6 +18,7 @@ interface NextApiResponseWithSocket extends NextApiResponse {
 
 const ioHandler = (req: NextApiRequest, res: NextApiResponseWithSocket) => {
   if (!res.socket.server.io) {
+    console.log("Initializing Socket.IO server...")
     const io = new Server(res.socket.server, {
       path: "/api/socketio",
       addTrailingSlash: false,
@@ -25,20 +26,20 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponseWithSocket) => {
 
     // Socket.IO Events
     io.on("connection", (socket) => {
-      console.log("Client connected")
+      console.log("Client connected:", socket.id)
 
       socket.on("new-answer", (data) => {
-        console.log("New answer received:", data)
+        console.log("New answer event:", data)
         io.emit("answer-submitted", data)
       })
 
       socket.on("reset-quiz", (data) => {
-        console.log("Quiz reset received:", data)
+        console.log("Reset quiz event:", data)
         io.emit("quiz-reset", data)
       })
 
       socket.on("disconnect", () => {
-        console.log("Client disconnected")
+        console.log("Client disconnected:", socket.id)
       })
     })
 

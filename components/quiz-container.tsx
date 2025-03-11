@@ -73,6 +73,8 @@ export default function QuizContainer() {
         socket.on('connect', () => {
           console.log('Quiz connected to Socket.IO')
           setSocket(socket)
+          // Initial data fetch
+          void fetchAnswerCount()
         })
 
         // Wenn der Benutzer zurückgesetzt wurde
@@ -85,13 +87,20 @@ export default function QuizContainer() {
               inputRef.current.focus()
             }
           }
+          // Aktualisiere die Anzahl nach Reset
+          void fetchAnswerCount()
         })
 
         // Wenn eine neue Antwort eingereicht wurde
-        socket.on('answer-submitted', () => {
-          console.log('New answer submitted')
+        socket.on('answer-submitted', (data: { username: string }) => {
+          console.log('New answer submitted by:', data.username)
           // Aktualisiere die Anzahl der Antworten
           void fetchAnswerCount()
+          // Wenn es unsere eigene Antwort ist, setze den Status
+          if (data.username === username) {
+            setHasSubmitted(true)
+            setUserAnswer('')
+          }
         })
 
         return () => {
@@ -104,8 +113,6 @@ export default function QuizContainer() {
 
     if (username) {
       void initSocket()
-      // Initial answer count
-      void fetchAnswerCount()
     }
   }, [username, fetchAnswerCount])
 
@@ -131,21 +138,19 @@ export default function QuizContainer() {
         throw new Error('Failed to submit answer')
       }
 
-      setHasSubmitted(true)
       // Sende Socket.IO Event für neue Antwort
       socket?.emit('new-answer', {
         username,
         answer: userAnswer.trim(),
       })
-      
-      // Aktualisiere die Anzahl der Antworten
-      void fetchAnswerCount()
     } catch (error) {
       console.error('Error submitting answer:', error)
       alert('Fehler beim Einreichen der Antwort. Bitte versuche es erneut.')
-    } finally {
       setIsSubmitting(false)
+      return
     }
+
+    setIsSubmitting(false)
   }
 
   return (

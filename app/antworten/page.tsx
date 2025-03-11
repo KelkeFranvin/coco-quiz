@@ -48,17 +48,19 @@ export default function AnswersPage() {
         socket.on('connect', () => {
           console.log('Admin connected to Socket.IO')
           setSocket(socket)
+          // Initial data fetch
+          void fetchAnswers()
         })
 
         // Wenn eine neue Antwort eingereicht wurde
-        socket.on('answer-submitted', (data: { username: string }) => {
+        socket.on('answer-submitted', (data: { username: string; answer: string }) => {
           console.log('New answer received:', data)
           // Sofort die Antworten neu laden
           void fetchAnswers()
           // Benachrichtigung anzeigen
           if (Notification.permission === 'granted') {
             void new Notification('Neue Antwort', {
-              body: `${data.username} hat eine neue Antwort eingereicht`,
+              body: `${data.username} hat eine neue Antwort eingereicht: "${data.answer}"`,
             })
           }
         })
@@ -93,7 +95,6 @@ export default function AnswersPage() {
 
     if (isAuthenticated) {
       void initSocket()
-      void fetchAnswers()
     }
   }, [isAuthenticated, fetchAnswers])
 
@@ -122,8 +123,8 @@ export default function AnswersPage() {
         throw new Error(error.message || 'Failed to reset user')
       }
 
+      // Sende Socket.IO Event für Reset
       socket?.emit('reset-quiz', { username })
-      await fetchAnswers()
     } catch (error) {
       console.error('Error resetting user:', error)
       alert(error instanceof Error ? error.message : 'Failed to reset user')
@@ -150,8 +151,8 @@ export default function AnswersPage() {
         throw new Error(error.message || 'Failed to reset all users')
       }
 
+      // Sende Socket.IO Event für Reset
       socket?.emit('reset-quiz', { resetAll: true })
-      await fetchAnswers()
     } catch (error) {
       console.error('Error resetting all users:', error)
       alert(error instanceof Error ? error.message : 'Failed to reset all users')
