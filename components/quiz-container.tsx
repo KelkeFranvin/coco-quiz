@@ -20,20 +20,28 @@ export default function QuizContainer() {
   const [answerCount, setAnswerCount] = useState(0)
 
   const checkSubmissionStatus = useCallback(async () => {
+    if (!username) return; // Don't check if no username
+    
     try {
-      const response = await fetch('/api/answers')
-      const data = await response.json()
+      setIsSubmitting(true); // Prevent submissions while checking
+      const response = await fetch('/api/answers');
+      if (!response.ok) throw new Error('Failed to fetch answers');
+      
+      const data = await response.json();
       const userHasSubmitted = data.answers.some(
         (answer: Answer) => answer.username === username
-      )
-      setHasSubmitted(userHasSubmitted)
-      setAnswerCount(data.answers.length)
+      );
+      
+      setHasSubmitted(userHasSubmitted);
+      setAnswerCount(data.answers.length);
       
       if (!userHasSubmitted && inputRef.current) {
-        inputRef.current.focus()
+        inputRef.current.focus();
       }
     } catch (error) {
-      console.error("Fehler beim Prüfen des Antwort-Status:", error)
+      console.error("Fehler beim Prüfen des Antwort-Status:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   }, [username])
 
@@ -95,7 +103,7 @@ export default function QuizContainer() {
   // Antwort einreichen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!userAnswer.trim() || isSubmitting) return
+    if (!userAnswer.trim() || isSubmitting || hasSubmitted) return
 
     setIsSubmitting(true)
     try {
