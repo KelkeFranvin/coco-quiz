@@ -29,17 +29,25 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponseWithSocket) => {
       console.log("Client connected:", socket.id)
 
       socket.on("submit-answer", (data) => {
-        console.log("New answer event:", data)
+        console.log("New answer event received:", data)
+        // Broadcast to all clients including sender
         io.emit("answer-submitted", data)
+        console.log("Answer-submitted event emitted to all clients")
       })
 
       socket.on("quiz-reset", (data) => {
-        console.log("Reset quiz event:", data)
+        console.log("Reset quiz event received:", data)
+        // Broadcast to all clients including sender
         io.emit("quiz-reset", data)
+        console.log("Quiz-reset event emitted to all clients")
       })
 
       socket.on("disconnect", () => {
         console.log("Client disconnected:", socket.id)
+      })
+
+      socket.on("error", (error) => {
+        console.error("Socket error:", error)
       })
     })
 

@@ -92,7 +92,7 @@ export default function AnswersPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === "admin") {
+    if (password === "cocoadmingang") {
       setIsAuthenticated(true)
     } else {
       setError("Falsches Passwort")
@@ -120,7 +120,6 @@ export default function AnswersPage() {
       // Aktualisiere die Antworten nach erfolgreicher Operation
       await fetchAnswers()
       
-      alert(`Benutzer ${username} wurde zurückgesetzt und kann jetzt erneut antworten.`)
     } catch (error) {
       console.error("Fehler:", error)
       setError("Fehler beim Zurücksetzen des Benutzers")
@@ -152,7 +151,6 @@ export default function AnswersPage() {
       // Aktualisiere die Antworten nach erfolgreicher Operation
       await fetchAnswers()
       
-      alert("Alle Benutzer wurden zurückgesetzt und können jetzt erneut antworten.")
     } catch (error) {
       console.error("Fehler:", error)
       setError("Fehler beim Zurücksetzen aller Benutzer")

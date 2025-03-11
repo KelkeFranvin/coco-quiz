@@ -20,28 +20,26 @@ export default function QuizContainer() {
   const [answerCount, setAnswerCount] = useState(0)
 
   const checkSubmissionStatus = useCallback(async () => {
-    if (!username) return; // Don't check if no username
+    if (!username) return
     
     try {
-      setIsSubmitting(true); // Prevent submissions while checking
-      const response = await fetch('/api/answers');
-      if (!response.ok) throw new Error('Failed to fetch answers');
+      const response = await fetch('/api/answers')
+      if (!response.ok) throw new Error('Failed to fetch answers')
       
-      const data = await response.json();
+      const data = await response.json()
       const userHasSubmitted = data.answers.some(
         (answer: Answer) => answer.username === username
-      );
+      )
       
-      setHasSubmitted(userHasSubmitted);
-      setAnswerCount(data.answers.length);
+      console.log('Submission status check:', username, userHasSubmitted)
+      setHasSubmitted(userHasSubmitted)
+      setAnswerCount(data.answers.length)
       
-      if (!userHasSubmitted && inputRef.current) {
-        inputRef.current.focus();
+      if (!userHasSubmitted && inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus()
       }
     } catch (error) {
-      console.error("Fehler beim Prüfen des Antwort-Status:", error);
-    } finally {
-      setIsSubmitting(false);
+      console.error("Fehler beim Prüfen des Antwort-Status:", error)
     }
   }, [username])
 
@@ -54,60 +52,117 @@ export default function QuizContainer() {
     }
 
     setUsername(storedUsername)
+    // Check submission status on mount
     checkSubmissionStatus()
+
+    // Set up interval to periodically check submission status
+    const intervalId = setInterval(() => {
+      checkSubmissionStatus()
+    }, 500) // Check every 5 seconds
+
+    return () => clearInterval(intervalId)
   }, [router, checkSubmissionStatus])
 
   // Socket.IO setup
   useEffect(() => {
+    let socketInstance: Socket | null = null
+
     const initSocket = async () => {
       try {
         await fetch('/api/socketio')
-        const socket = io({
+        const newSocket = io({
           path: '/api/socketio',
         })
 
-        socket.on('connect', () => {
+        newSocket.on('connect', () => {
           console.log('Connected to Socket.IO')
-          setSocket(socket)
+          setSocket(newSocket)
+          // Check status immediately upon connection
+          checkSubmissionStatus()
         })
 
-        socket.on('answer-submitted', (data: { username: string; answer: string }) => {
+        newSocket.on('answer-submitted', (data: { username: string; answer: string }) => {
           console.log('Answer submitted event received:', data)
           if (data.username === username) {
+            // If this client submitted the answer, update UI immediately
             setHasSubmitted(true)
             setUserAnswer('')
           }
-          void checkSubmissionStatus()
+          checkSubmissionStatus()
         })
 
-        socket.on('quiz-reset', (data: { username?: string; resetAll?: boolean }) => {
+        newSocket.on('quiz-reset', (data: { username?: string; resetAll?: boolean }) => {
           console.log('Quiz reset event received:', data)
           if (data.resetAll || data.username === username) {
             setHasSubmitted(false)
             setUserAnswer('')
+            if (inputRef.current) {
+              inputRef.current.focus()
+            }
           }
-          void checkSubmissionStatus()
+          checkSubmissionStatus()
         })
 
-        return () => {
-          socket.disconnect()
-        }
+        newSocket.on('disconnect', () => {
+          console.log('Disconnected from Socket.IO')
+        })
+
+        newSocket.on('connect_error', (error) => {
+          console.error('Socket connection error:', error)
+        })
+
+        socketInstance = newSocket
       } catch (error) {
         console.error('Socket initialization error:', error)
       }
     }
 
     void initSocket()
+
+    return () => {
+      if (socketInstance) {
+        console.log('Cleaning up socket connection')
+        socketInstance.disconnect()
+      }
+    }
   }, [username, checkSubmissionStatus])
 
   // Antwort einreichen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!userAnswer.trim() || isSubmitting || hasSubmitted) return
+    // Prevent submission if:
+    // - Answer is empty
+    // - Already submitting
+    // - Already submitted an answer
+    if (!userAnswer.trim() || isSubmitting || hasSubmitted) {
+      console.log('Submission prevented', { 
+        isEmpty: !userAnswer.trim(), 
+        isSubmitting, 
+        hasSubmitted 
+      })
+      return
+    }
 
     setIsSubmitting(true)
+
+    // Double-check submission status first
     try {
-      const response = await fetch('/api/submit-answer', {
+      const checkResponse = await fetch('/api/answers')
+      const checkData = await checkResponse.json()
+      const alreadySubmitted = checkData.answers.some(
+        (answer: Answer) => answer.username === username
+      )
+      
+      if (alreadySubmitted) {
+        setHasSubmitted(true)
+        setIsSubmitting(false)
+        setUserAnswer('')
+        console.log('Submission blocked - already submitted')
+        return
+      }
+      
+      // Proceed with submission
+      const response = await fetch('/api/answers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,15 +174,19 @@ export default function QuizContainer() {
       })
 
       if (!response.ok) {
-        // Don't try to parse the response, just use status text
-        throw new Error(`Failed to submit answer: ${response.statusText || 'Unknown error'}`)
+        const errorText = await response.text()
+        throw new Error(`Failed to submit answer: ${errorText || response.statusText || 'Unknown error'}`)
       }
 
-      // Only emit socket event and update state if submission was successful
-      socket?.emit('submit-answer', { username, answer: userAnswer })
+      // Immediately update local state
       setHasSubmitted(true)
       setUserAnswer('')
-      void checkSubmissionStatus() // Update answer count
+      setAnswerCount(prev => prev + 1)
+      
+      // Then emit socket event
+      socket?.emit('submit-answer', { username, answer: userAnswer })
+      
+      console.log('Answer submitted successfully')
     } catch (error) {
       console.error('Error submitting answer:', error)
       alert(error instanceof Error ? error.message : 'Failed to submit answer')
