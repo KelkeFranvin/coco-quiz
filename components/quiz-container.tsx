@@ -62,7 +62,6 @@ export default function QuizContainer() {
 
   // Socket.IO setup
   useEffect(() => {
-    // Socket.IO Initialisierung
     const initSocket = async () => {
       try {
         await fetch('/api/socketio')
@@ -71,31 +70,24 @@ export default function QuizContainer() {
         })
 
         socket.on('connect', () => {
-          console.log('Quiz connected to Socket.IO')
+          console.log('Connected to Socket.IO')
           setSocket(socket)
-          void fetchAnswerCount()
         })
 
-        // Wenn der Benutzer zurückgesetzt wurde
-        socket.on('quiz-reset', (data: { username?: string; resetAll?: boolean }) => {
-          console.log('Quiz reset event received:', data)
-          if (data.username === username || data.resetAll) {
-            setHasSubmitted(false)
-            setUserAnswer('')
-            if (inputRef.current) {
-              inputRef.current.focus()
-            }
-          }
-          void fetchAnswerCount()
-        })
-
-        // Wenn eine neue Antwort eingereicht wurde
         socket.on('answer-submitted', (data: { username: string; answer: string }) => {
-          console.log('New answer submitted by:', data.username)
+          console.log('Answer submitted event received:', data)
           if (data.username === username) {
             setHasSubmitted(true)
+            setUserAnswer('')
           }
-          void fetchAnswerCount()
+        })
+
+        socket.on('quiz-reset', (data: { username?: string; resetAll?: boolean }) => {
+          console.log('Quiz reset event received:', data)
+          if (data.resetAll || data.username === username) {
+            setHasSubmitted(false)
+            setUserAnswer('')
+          }
         })
 
         return () => {
@@ -106,45 +98,38 @@ export default function QuizContainer() {
       }
     }
 
-    if (username) {
-      void initSocket()
-      void fetchAnswerCount()
-    }
-  }, [username, fetchAnswerCount])
+    void initSocket()
+  }, [username])
 
   // Antwort einreichen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!userAnswer.trim() || hasSubmitted || isSubmitting) return
+    if (!userAnswer.trim() || isSubmitting) return
 
     setIsSubmitting(true)
     try {
-      const response = await fetch('/api/answers', {
+      const response = await fetch('/api/submit-answer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           username,
-          answer: userAnswer.trim(),
+          answer: userAnswer,
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to submit answer')
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to submit answer')
       }
 
-      // Sende Socket.IO Event für neue Antwort
-      socket?.emit('new-answer', {
-        username,
-        answer: userAnswer.trim(),
-      })
-      
-      // Leere das Eingabefeld
+      setHasSubmitted(true)
       setUserAnswer('')
+      socket?.emit('submit-answer', { username, answer: userAnswer })
     } catch (error) {
       console.error('Error submitting answer:', error)
-      alert('Fehler beim Einreichen der Antwort. Bitte versuche es erneut.')
+      alert(error instanceof Error ? error.message : 'Failed to submit answer')
     } finally {
       setIsSubmitting(false)
     }
