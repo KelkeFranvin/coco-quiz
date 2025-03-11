@@ -19,18 +19,6 @@ export default function QuizContainer() {
   const router = useRouter()
   const [answerCount, setAnswerCount] = useState(0)
 
-  // Funktion zum Abrufen der Antwortanzahl
-  const fetchAnswerCount = useCallback(async () => {
-    try {
-      const response = await fetch('/api/answers')
-      if (!response.ok) throw new Error('Failed to fetch answer count')
-      const data = await response.json()
-      setAnswerCount(data.answers.length)
-    } catch (error) {
-      console.error('Error fetching answer count:', error)
-    }
-  }, [])
-
   const checkSubmissionStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/answers')
@@ -39,6 +27,7 @@ export default function QuizContainer() {
         (answer: Answer) => answer.username === username
       )
       setHasSubmitted(userHasSubmitted)
+      setAnswerCount(data.answers.length)
       
       if (!userHasSubmitted && inputRef.current) {
         inputRef.current.focus()
@@ -80,6 +69,7 @@ export default function QuizContainer() {
             setHasSubmitted(true)
             setUserAnswer('')
           }
+          void checkSubmissionStatus()
         })
 
         socket.on('quiz-reset', (data: { username?: string; resetAll?: boolean }) => {
@@ -88,6 +78,7 @@ export default function QuizContainer() {
             setHasSubmitted(false)
             setUserAnswer('')
           }
+          void checkSubmissionStatus()
         })
 
         return () => {
