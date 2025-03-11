@@ -48,6 +48,7 @@ export default function AnswersPage() {
         socket.on('connect', () => {
           console.log('Admin connected to Socket.IO')
           setSocket(socket)
+          setIsLoading(true)
           void fetchAnswers()
         })
 
@@ -85,6 +86,7 @@ export default function AnswersPage() {
         }
       } catch (error) {
         console.error('Socket initialization error:', error)
+        setIsLoading(false)
       }
     }
 
@@ -120,7 +122,8 @@ export default function AnswersPage() {
         throw new Error(error.message || 'Failed to reset user')
       }
 
-      socket?.emit('reset-quiz', { username })
+      socket?.emit('quiz-reset', { username })
+      void fetchAnswers()
     } catch (error) {
       console.error('Error resetting user:', error)
       alert(error instanceof Error ? error.message : 'Failed to reset user')
@@ -148,7 +151,8 @@ export default function AnswersPage() {
         throw new Error(error.message || 'Failed to reset all users')
       }
 
-      socket?.emit('reset-quiz', { resetAll: true })
+      socket?.emit('quiz-reset', { resetAll: true })
+      void fetchAnswers()
     } catch (error) {
       console.error('Error resetting all users:', error)
       alert(error instanceof Error ? error.message : 'Failed to reset all users')
