@@ -14,7 +14,7 @@ export default function QuizPage() {
 
       {/* Admin-Button */}
       <div className="absolute top-4 right-4 z-20">
-        <Link href="/antworten">
+        <Link href="/admin">
           <Button variant="outline" className="bg-black/30 border-white/20 text-white hover:bg-white/10">
             Admin-Bereich
           </Button>

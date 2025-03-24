@@ -1,162 +1,48 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Answer } from "@/types/answer"
-import { io, Socket } from "socket.io-client"
+import { useAnswers } from "@/lib/hooks/useAnswers"
 
 export default function AnswersPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState("")
-  const [answers, setAnswers] = useState<Answer[]>([])
-  const [resetAnswers, setResetAnswers] = useState<Answer[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
-  const [resetLoading, setResetLoading] = useState(false)
-  const [socket, setSocket] = useState<Socket | null>(null)
+  const { answers, resetAnswersList, loading, handleReset, resetIndividualAnswer } = useAnswers()
 
-  // Socket.IO setup
+  // Check for existing authentication on component mount
   useEffect(() => {
-    const setupSocket = async () => {
-      try {
-        // First, initialize socket connection
-        await fetch('/api/socketio')
-        const socket = io({
-          path: '/api/socketio',
-        })
-
-        socket.on('connect', () => {
-          console.log('Admin: Connected to Socket.IO')
-          setSocket(socket)
-        })
-
-        socket.on('quiz-reset', async () => {
-          console.log('Admin: Quiz reset event received')
-          await fetchAnswers()
-        })
-
-        socket.on('answer-submitted', async () => {
-          console.log('Admin: New answer submitted')
-          await fetchAnswers()
-        })
-
-        return socket
-      } catch (error) {
-        console.error('Error setting up socket:', error)
-        return null
-      }
-    }
-
-    let socket: Socket | null = null
+    const isAdmin = localStorage.getItem("isAdmin")
+    const storedHash = localStorage.getItem("adminHash")
+    const currentHash = btoa("cocoquizhurra") // Simple hash of current password
     
-    setupSocket().then(s => {
-      socket = s
-    })
-
-    return () => {
-      if (socket) {
-        socket.disconnect()
-      }
+    if (isAdmin === "true" && storedHash === currentHash) {
+      setIsAuthenticated(true)
+    } else {
+      // Clear invalid session
+      localStorage.removeItem("isAdmin")
+      localStorage.removeItem("adminHash")
     }
-  }, []) // Socket-Setup nur einmal beim Mount
-
-  // Lade Antworten, wenn authentifiziert
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchAnswers()
-    }
-  }, [isAuthenticated])
-
-  const fetchAnswers = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/answers")
-      if (!response.ok) {
-        throw new Error("Fehler beim Laden der Antworten")
-      }
-      const data = await response.json()
-      setAnswers(data.answers || [])
-      setResetAnswers(data.resetAnswers || [])
-    } catch (error) {
-      console.error("Fehler:", error)
-      setError("Fehler beim Laden der Antworten")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [])
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === "cocoadmingang") {
+    if (password === "cocoquizhurra") {
       setIsAuthenticated(true)
+      localStorage.setItem("isAdmin", "true")
+      localStorage.setItem("adminHash", btoa("cocoquizhurra"))
     } else {
       setError("Falsches Passwort")
     }
   }
 
-  const handleResetUser = async (username: string) => {
-    setResetLoading(true)
-    try {
-      const response = await fetch("/api/reset-user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Fehler beim Zurücksetzen des Benutzers")
-      }
-
-      // Emit WebSocket event nach erfolgreicher API-Operation
-      socket?.emit('reset-quiz', { username })
-      
-      // Aktualisiere die Antworten nach erfolgreicher Operation
-      await fetchAnswers()
-      
-    } catch (error) {
-      console.error("Fehler:", error)
-      setError("Fehler beim Zurücksetzen des Benutzers")
-    } finally {
-      setResetLoading(false)
-    }
-  }
-
-  const handleResetAll = async () => {
-    //if (!confirm("Möchtest du wirklich alle Benutzer zurücksetzen?")) return
-
-    setResetLoading(true)
-    try {
-      const response = await fetch("/api/reset-user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ resetAll: true }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Fehler beim Zurücksetzen aller Benutzer")
-      }
-
-      // Emit WebSocket event nach erfolgreicher API-Operation
-      socket?.emit('reset-quiz', { resetAll: true })
-      
-      // Aktualisiere die Antworten nach erfolgreicher Operation
-      await fetchAnswers()
-      
-    } catch (error) {
-      console.error("Fehler:", error)
-      setError("Fehler beim Zurücksetzen aller Benutzer")
-    } finally {
-      setResetLoading(false)
-    }
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    localStorage.removeItem("isAdmin")
+    localStorage.removeItem("adminHash")
   }
 
   return (
@@ -177,9 +63,21 @@ export default function AnswersPage() {
           <div className="h-1 w-32 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto rounded-full mb-4"></div>
         </div>
 
+        <div className="flex justify-end mb-8">
+          {isAuthenticated && (
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+            >
+              Abmelden
+            </Button>
+          )}
+        </div>
+
         {!isAuthenticated ? (
           <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8 max-w-md mx-auto">
-            <h2 className="text-2xl font-bold text-white mb-6 text-center">Anmeldung erforderlich</h2>
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">Wenn du fr Admin bist beweis es</h2>
 
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
@@ -221,8 +119,8 @@ export default function AnswersPage() {
                 <h2 className="text-2xl font-bold text-white">Aktuelle Antworten</h2>
                 <div className="flex gap-2">
                   <Button
-                    onClick={handleResetAll}
-                    disabled={resetLoading}
+                    onClick={handleReset}
+                    disabled={loading}
                     variant="outline"
                     className="bg-black/30 border-white/20 text-white hover:bg-white/10"
                   >
@@ -236,7 +134,7 @@ export default function AnswersPage() {
                 </div>
               </div>
 
-              {isLoading ? (
+              {loading ? (
                 <div className="text-center py-12">
                   <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                   <p className="text-white">Lade Antworten...</p>
@@ -244,35 +142,34 @@ export default function AnswersPage() {
               ) : answers.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                   <p className="text-xl">Noch keine Antworten vorhanden</p>
-                  <p className="mt-2">Warte auf Antworten der Teilnehmer</p>
+                  <p className="mt-2">Warte auf Antworten</p>
                 </div>
               ) : (
                 <div className="grid gap-4">
                   {answers.map((answer) => (
-                    <Card key={answer.id} className="bg-black/40 border-white/10">
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <CardTitle className="text-lg text-white">
-                              <span className="text-purple-400">{answer.username}</span> - Antwort #{answer.id}
-                            </CardTitle>
-                            <CardDescription>{new Date(answer.timestamp).toLocaleString("de-DE")}</CardDescription>
-                          </div>
-                          <Button
-                            onClick={() => handleResetUser(answer.username)}
-                            disabled={resetLoading}
-                            size="sm"
-                            variant="outline"
-                            className="bg-black/30 border-white/20 text-white hover:bg-white/10"
-                          >
-                            Zurücksetzen
-                          </Button>
+                    <div
+                      key={answer.id}
+                      className="bg-black/30 rounded-xl p-4 border border-white/10"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-white font-semibold">{answer.username}</h3>
+                          <p className="text-gray-300 mt-1">{answer.answer}</p>
+                          <p className="text-gray-500 text-sm mt-2">
+                            {new Date(answer.timestamp).toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}
+                          </p>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-white text-lg">{answer.answer}</p>
-                      </CardContent>
-                    </Card>
+                        <Button
+                          onClick={() => resetIndividualAnswer(answer.id)}
+                          disabled={loading}
+                          variant="outline"
+                          size="sm"
+                          className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                        >
+                          Zurücksetzen
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -280,33 +177,36 @@ export default function AnswersPage() {
 
             {/* Zurückgesetzte Antworten */}
             <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
-              <h2 className="text-2xl font-bold text-white mb-6">Vorherige Antworten</h2>
-              
-              {resetAnswers.length === 0 ? (
+              <h2 className="text-2xl font-bold text-white mb-6">Zurückgesetzte Antworten</h2>
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-white">Lade zurückgesetzte Antworten...</p>
+                </div>
+              ) : resetAnswersList.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
-                  <p className="text-xl">Keine zurückgesetzten Antworten</p>
-                  <p className="mt-2">Hier erscheinen Antworten, die zurückgesetzt wurden</p>
+                  <p>Keine zurückgesetzten Antworten</p>
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {resetAnswers.map((answer) => (
-                    <Card key={`${answer.id}-${answer.resetTimestamp}`} className="bg-black/40 border-white/10">
-                      <CardHeader className="pb-2">
+                  {resetAnswersList.map((answer) => (
+                    <div
+                      key={answer.id}
+                      className="bg-black/30 rounded-xl p-4 border border-white/10"
+                    >
+                      <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle className="text-lg text-white">
-                            <span className="text-purple-400">{answer.username}</span> - Antwort #{answer.id}
-                          </CardTitle>
-                          <CardDescription>
-                            Eingereicht: {new Date(answer.timestamp).toLocaleString("de-DE")}
-                            <br />
-                            Zurückgesetzt: {answer.resetTimestamp ? new Date(answer.resetTimestamp).toLocaleString("de-DE") : "Unbekannt"}
-                          </CardDescription>
+                          <h3 className="text-white font-semibold">{answer.username}</h3>
+                          <p className="text-gray-300 mt-1">{answer.answer}</p>
+                          <p className="text-gray-500 text-sm mt-2">
+                            Eingereicht: {new Date(answer.timestamp).toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}
+                          </p>
+                          <p className="text-gray-500 text-sm">
+                            Zurückgesetzt: {new Date(answer.resetTimestamp).toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}
+                          </p>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-white text-lg">{answer.answer}</p>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}

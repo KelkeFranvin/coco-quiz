@@ -1,77 +1,87 @@
+import { supabase } from './supabaseClient';
 import { Answer } from "@/types/answer"
 
 let nextId = 1
 let answers: Answer[] = []
 let resetAnswers: Answer[] = [] // Speichert zurückgesetzte Antworten
 
-// Funktion zum Hinzufügen einer neuen Antwort
-export function addAnswer(answer: string, username: string): Answer {
-  const newAnswer: Answer = {
-    id: nextId++,
-    answer,
-    username,
-    timestamp: new Date().toISOString(),
+// Function to add a new answer
+export async function addAnswer(answer: string, username: string): Promise<Answer | null> {
+  const { data, error } = await supabase
+    .from('answers')
+    .insert([{ answer, username }])
+    .single();
+
+  if (error) {
+    console.error("Error adding answer:", error);
+    return null;
   }
-  answers = [...answers, newAnswer]
-  return newAnswer
+
+  return data as Answer;
 }
 
-// Funktion zum Abrufen aller aktiven Antworten
-export function getAnswers(): Answer[] {
-  return [...answers]
+// Function to get all active answers
+export async function getAnswers(): Promise<Answer[]> {
+  const { data, error } = await supabase
+    .from('answers')
+    .select('*');
+
+  if (error) {
+    console.error("Error fetching answers:", error);
+    return [];
+  }
+
+  return data as Answer[];
 }
 
-// Funktion zum Abrufen aller zurückgesetzten Antworten
-export function getResetAnswers(): Answer[] {
-  return [...resetAnswers]
+// Function to get all reset answers
+export async function getResetAnswers(): Promise<Answer[]> {
+  const { data, error } = await supabase
+    .from('answers')
+    .select('*')
+    .eq('reset', true); // Assuming you have a 'reset' column to identify reset answers
+
+  if (error) {
+    console.error("Error fetching reset answers:", error);
+    return [];
+  }
+
+  return data as Answer[];
 }
 
 // Speichert, welche Benutzer bereits geantwortet haben
 let userSubmissions: Record<string, boolean> = {}
 
-// Funktion zum Markieren eines Benutzers als "hat geantwortet"
+// Function to mark a user as "has submitted"
 export function markUserSubmitted(username: string): void {
   userSubmissions = { ...userSubmissions, [username]: true }
 }
 
-// Funktion zum Prüfen, ob ein Benutzer bereits geantwortet hat
+// Function to check if a user has already submitted
 export function hasUserSubmitted(username: string): boolean {
   return !!userSubmissions[username]
 }
 
-// Funktion zum Zurücksetzen des Antwort-Status für einen Benutzer
-export function resetUserSubmission(username: string): void {
-  // Entferne den Benutzer aus userSubmissions
-  const newUserSubmissions = { ...userSubmissions }
-  delete newUserSubmissions[username]
-  userSubmissions = newUserSubmissions
-  
-  // Finde die Antwort des Benutzers
-  const userAnswers = answers.filter(answer => answer.username === username)
-  
-  // Verschiebe die Antworten in resetAnswers
-  resetAnswers = [...resetAnswers, ...userAnswers.map(answer => ({
-    ...answer,
-    resetTimestamp: new Date().toISOString()
-  }))]
-  
-  // Entferne die Antworten aus der aktiven Liste
-  answers = answers.filter(answer => answer.username !== username)
+// Function to reset user submission
+export async function resetUserSubmission(username: string): Promise<void> {
+  const { error } = await supabase
+    .from('answers')
+    .delete()
+    .match({ username });
+
+  if (error) {
+    console.error("Error resetting user submission:", error);
+  }
 }
 
-// Funktion zum Zurücksetzen aller Benutzer-Antwort-Status
-export function resetAllUserSubmissions(): void {
-  // Verschiebe alle aktuellen Antworten in resetAnswers
-  resetAnswers = [
-    ...resetAnswers,
-    ...answers.map(answer => ({
-      ...answer,
-      resetTimestamp: new Date().toISOString()
-    }))
-  ]
-  
-  // Lösche alle Einträge
-  userSubmissions = {}
-  answers = []
+// Function to reset all user submissions
+export async function resetAllUserSubmissions(): Promise<void> {
+  const { error } = await supabase
+    .from('answers')
+    .delete();
+
+  if (error) {
+    console.error("Error resetting all submissions:", error);
+  }
 }
 
