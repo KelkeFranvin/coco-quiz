@@ -33,7 +33,7 @@ export default function UsernameForm() {
           Coco Quiz
         </h1>
         <div className="h-1 w-32 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto rounded-full mb-4"></div>
-        <p className="text-white/80 text-lg mb-6">Bitte gib deinen Namen ein, um zu beginnen</p>
+        <p className="text-white/80 text-lg mb-6">Jo wie heißt du? (falls du in einem Team bist gib den Teamnamen an)</p>
       </div>
 
       <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
@@ -41,7 +41,7 @@ export default function UsernameForm() {
           <div className="relative group">
             <Input
               type="text"
-              placeholder="Dein Name..."
+              placeholder="Dein Name / Teamname..."
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="bg-black/30 border-purple-500/30 text-white placeholder:text-gray-400 h-14 px-4 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
