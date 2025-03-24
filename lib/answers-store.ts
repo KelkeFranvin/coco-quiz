@@ -1,10 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Answer } from "@/types/answer"
 
-let nextId = 1
-let answers: Answer[] = []
-let resetAnswers: Answer[] = [] // Speichert zurückgesetzte Antworten
-
 // Function to add a new answer
 export async function addAnswer(answer: string, username: string): Promise<Answer | null> {
   const { data, error } = await supabase
