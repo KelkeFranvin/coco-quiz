@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAnswers } from "@/lib/hooks/useAnswers"
 import { changeQuestionType } from "@/lib/hooks/changeQuestionType"
-import { fetchBuzzers, buzzer, resetIndividualBuzzer, resetAllBuzzer, submitBuzz } from "@/lib/hooks/buzz"
+import { fetchBuzzers, buzzer, resetIndividualBuzzer, resetAllBuzzer } from "@/lib/hooks/buzz"
 import { supabase } from "@/lib/supabaseClient"
 
 export default function AdminPage() {

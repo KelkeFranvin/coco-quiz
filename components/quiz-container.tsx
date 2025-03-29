@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { useAnswers } from "@/lib/hooks/useAnswers"
 import { fetchQuestionType } from "@/lib/hooks/changeQuestionType"
-import { submitBuzz, fetchBuzzers } from "@/lib/hooks/buzz"
+import { submitBuzz } from "@/lib/hooks/buzz"
 import { supabase } from '@/lib/supabaseClient'
 
 export default function QuizContainer() {
@@ -17,7 +17,7 @@ export default function QuizContainer() {
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  const { answers, submitAnswer, loading, error } = useAnswers()
+  const { answers, submitAnswer, error } = useAnswers()
 
   const [questionType, setQuestionType] = useState<string | null>(null)
   const [buzzerCount, setBuzzerCount] = useState(0)
