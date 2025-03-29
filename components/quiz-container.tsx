@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { useAnswers } from "@/lib/hooks/useAnswers"
+import { fetchQuestionType } from "@/lib/hooks/changeQuestionType"
+import { supabase } from '@/lib/supabaseClient'
 
 export default function QuizContainer() {
   const [userAnswer, setUserAnswer] = useState("")
@@ -15,6 +17,45 @@ export default function QuizContainer() {
   const router = useRouter()
 
   const { answers, submitAnswer, loading, error } = useAnswers()
+
+  const [questionType, setQuestionType] = useState<string | null>(null)
+
+  useEffect(() => {
+    const getQuestionType = async () => {
+      const data = await fetchQuestionType()
+      if (data && data.length > 0) {
+        console.log("Setting question type to:", data[0].questiontype)
+        setQuestionType(data[0].questiontype)
+      } else {
+        console.log("No question type data found or data is empty.")
+      }
+    }
+
+    getQuestionType()
+
+    // Set up a channel to listen for changes in the questiontype table
+    const questionTypeChannel = supabase
+      .channel('questiontype_channel')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'questiontype' },
+        payload => {
+          if (payload.new.id === 1) { // Check if the updated row is the one we care about
+            console.log("Question type updated:", payload.new.questiontype);
+            setQuestionType(payload.new.questiontype); // Update state with the new question type
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      questionTypeChannel.unsubscribe(); // Use unsubscribe to clean up the subscription
+    }
+  }, [])
+
+  const questionTypeIsNormal = (questionType === "normal")
+  const questionTypeIsBuzzer = (questionType === "buzzer")
+  const questionTypeIsNothing = (questionType === "nichts")
 
   // Check if user has already submitted
   const hasSubmitted = answers.some(answer => answer.username === username)
@@ -77,49 +118,69 @@ export default function QuizContainer() {
       </div>
 
       <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
-        {hasSubmitted ? (
-          <div className="text-center py-6">
-            <h2 className="text-2xl font-bold text-white mb-4">Antwort abgegeben :)</h2>
-            <p className="text-white/70 mb-6">
-              Geil du hast eine Antwort abgegeben (musst jetzt auf admins warten)
-            </p>
-            <div className="w-24 h-24 mx-auto mb-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                className="text-green-400 w-full h-full"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+        {questionTypeIsNormal ? (
+          hasSubmitted ? (
+            <div className="text-center py-6">
+              <h2 className="text-2xl font-bold text-white mb-4">Antwort abgegeben :)</h2>
+              <p className="text-white/70 mb-6">
+                Geil du hast eine Antwort abgegeben (musst jetzt auf admins warten)
+              </p>
+              <div className="w-24 h-24 mx-auto mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  className="text-green-400 w-full h-full"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="relative group">
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Deine Antwort hier eingeben..."
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  className="bg-black/30 border-purple-500/30 text-white placeholder:text-gray-400 h-14 px-4 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
+                  disabled={loading || isSubmitting}
+                />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 -z-10"></div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={!userAnswer.trim() || loading || isSubmitting}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 h-14 text-lg font-semibold rounded-xl transition-all duration-300 disabled:opacity-50"
+              >
+                {isSubmitting ? "Wird gesendet..." : "Antwort absenden"}
+              </Button>
+
+              {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+            </form>
+          )
+        ) : questionTypeIsBuzzer ? (
+          <div className="text-center py-6">
+            <img src="/app/quiz/buzzer.png" alt="Buzzer" className="w-full h-auto" />
+          </div>
+        ) : questionTypeIsNothing ? (
+          <div className="text-center py-6">
+            <h2 className="text-2xl font-bold text-white mb-4">Warte korz</h2>
+            <p className="text-white/70 mb-6">
+              Coco Quiz 🔥
+            </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="relative group">
-              <Input
-                ref={inputRef}
-                type="text"
-                placeholder="Deine Antwort hier eingeben..."
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                className="bg-black/30 border-purple-500/30 text-white placeholder:text-gray-400 h-14 px-4 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
-                disabled={loading || isSubmitting}
-              />
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 -z-10"></div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={!userAnswer.trim() || loading || isSubmitting}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 h-14 text-lg font-semibold rounded-xl transition-all duration-300 disabled:opacity-50"
-            >
-              {isSubmitting ? "Wird gesendet..." : "Antwort absenden"}
-            </Button>
-
-            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-          </form>
+          <div className="text-center py-6">
+            <h2 className="text-2xl font-bold text-white mb-4">Öhhh</h2>
+            <p className="text-white/70 mb-6">
+              Das nicht normal 💀 (sag mal Kelvin Bescheid)
+            </p>
+          </div>
         )}
       </div>
     </div>

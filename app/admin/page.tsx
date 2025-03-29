@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAnswers } from "@/lib/hooks/useAnswers"
+import { changeQuestionType } from "@/lib/hooks/changeQuestionType"
 
 export default function AnswersPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -63,16 +64,41 @@ export default function AnswersPage() {
           <div className="h-1 w-32 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto rounded-full mb-4"></div>
         </div>
 
-        <div className="flex justify-end mb-8">
-          {isAuthenticated && (
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              className="bg-black/30 border-white/20 text-white hover:bg-white/10"
-            >
-              Abmelden
-            </Button>
-          )}
+        <div className="flex justify-between mb-8">
+          <div className="flex space-x-2">
+            {isAuthenticated && (
+              <>
+                <Button
+                  onClick={() => changeQuestionType("nichts")}
+                  variant="outline"
+                  className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                >
+                  Gar nichts
+                </Button>
+                <Button
+                  onClick={() => changeQuestionType("buzzer")}
+                  variant="outline"
+                  className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                >
+                  Buzzer
+                </Button>
+                <Button
+                  onClick={() => changeQuestionType("normal")}
+                  variant="outline"
+                  className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                >
+                  Normal
+                </Button>
+              </>
+            )}
+          </div>
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+          >
+            Abmelden
+          </Button>
         </div>
 
         {!isAuthenticated ? (
