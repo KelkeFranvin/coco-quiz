@@ -7,12 +7,55 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAnswers } from "@/lib/hooks/useAnswers"
 import { changeQuestionType } from "@/lib/hooks/changeQuestionType"
+import { fetchBuzzers, buzzer, resetIndividualBuzzer, resetAllBuzzer, submitBuzz } from "@/lib/hooks/buzz"
+import { supabase } from "@/lib/supabaseClient"
 
-export default function AnswersPage() {
+export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
-  const { answers, resetAnswersList, loading, handleReset, resetIndividualAnswer } = useAnswers()
+  const { answers, resetAnswersList, loading: loadingAnswers, handleReset, resetIndividualAnswer, handleResetReset } = useAnswers()
+  const [buzzers, setBuzzers] = useState<buzzer[]>([])
+  const [loadingBuzzers, setLoadingBuzzers] = useState(true)
+
+  // Fetch buzzers on component mount
+  useEffect(() => {
+    const getBuzzers = async () => {
+      setLoadingBuzzers(true)
+      const fetchedBuzzers = await fetchBuzzers()
+      setBuzzers(fetchedBuzzers)
+      setLoadingBuzzers(false)
+    }
+
+    getBuzzers()
+  }, [])
+
+  // Subscribe to real-time updates for buzzers
+  useEffect(() => {
+    const buzzerSubscription = supabase
+      .channel('buzzers_channel')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'buzzers' },
+        (payload) => {
+          console.log('New buzzer added:', payload)
+          const newBuzzer = payload.new as buzzer
+
+          // Check if the username already exists in the current buzzers
+          setBuzzers((prevBuzzers) => {
+            if (!prevBuzzers.some(b => b.username === newBuzzer.username)) {
+              return [...prevBuzzers, newBuzzer] // Add the new buzzer if it doesn't exist
+            }
+            return prevBuzzers // Return the previous state if it exists
+          })
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(buzzerSubscription)
+    }
+  }, [])
 
   // Check for existing authentication on component mount
   useEffect(() => {
@@ -44,6 +87,21 @@ export default function AnswersPage() {
     setIsAuthenticated(false)
     localStorage.removeItem("isAdmin")
     localStorage.removeItem("adminHash")
+  }
+
+  const handleResetIndividualBuzzer = async (buzzerUsername: string) => {
+    setLoadingBuzzers(true)
+    await resetIndividualBuzzer(buzzerUsername)
+    const fetchedBuzzers = await fetchBuzzers()
+    setBuzzers(fetchedBuzzers)
+    setLoadingBuzzers(false)
+  }
+
+  const handleResetAllBuzzer = async () => {
+    setLoadingBuzzers(true)
+    await resetAllBuzzer()
+    setBuzzers([])
+    setLoadingBuzzers(false)
   }
 
   return (
@@ -146,7 +204,7 @@ export default function AnswersPage() {
                 <div className="flex gap-2">
                   <Button
                     onClick={handleReset}
-                    disabled={loading}
+                    disabled={loadingAnswers}
                     variant="outline"
                     className="bg-black/30 border-white/20 text-white hover:bg-white/10"
                   >
@@ -160,7 +218,7 @@ export default function AnswersPage() {
                 </div>
               </div>
 
-              {loading ? (
+              {loadingAnswers ? (
                 <div className="text-center py-12">
                   <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                   <p className="text-white">Lade Antworten...</p>
@@ -187,7 +245,7 @@ export default function AnswersPage() {
                         </div>
                         <Button
                           onClick={() => resetIndividualAnswer(answer.id)}
-                          disabled={loading}
+                          disabled={loadingAnswers}
                           variant="outline"
                           size="sm"
                           className="bg-black/30 border-white/20 text-white hover:bg-white/10"
@@ -201,10 +259,95 @@ export default function AnswersPage() {
               )}
             </div>
 
+            {/* BUZZER*/}
+            <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white">Buzzers</h2>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleResetAllBuzzer}
+                    disabled={loadingBuzzers}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    Alle zurücksetzen
+                  </Button>
+                </div>
+              </div>
+
+              {loadingBuzzers ? (
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-white">Lade Buzzer...</p>
+                </div>
+              ) : buzzers.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <p className="text-xl">Noch keine Buzzer</p>
+                  <p className="mt-2">Warte auf Buzzer</p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {buzzers.map((buzzer) => (
+                    <div
+                      key={buzzer.id}
+                      className="bg-black/30 rounded-xl p-4 border border-white/10"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-white font-semibold">{buzzer.username}</h3>
+                          <img width={100} src="/buzzer.png"/>
+                          <p className="text-gray-500 text-sm mt-2">
+                            {(() => {
+                                const date = new Date(buzzer.timestamp);
+                                const options: Intl.DateTimeFormatOptions = {
+                                    timeZone: 'Europe/Berlin',
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                    hour12: false // Use 24-hour format
+                                };
+                                const formattedDate = date.toLocaleString('de-DE', options);
+                                const milliseconds = date.getMilliseconds().toString().padStart(3, '0'); // Get milliseconds and pad to 3 digits
+                                return `${formattedDate}.${milliseconds}`; // Combine date and milliseconds
+                            })()}
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => handleResetIndividualBuzzer(buzzer.username)}
+                          disabled={loadingBuzzers}
+                          variant="outline"
+                          size="sm"
+                          className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                        >
+                          {loadingBuzzers ? "Zurücksetzen..." : "Zurücksetzen"}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Zurückgesetzte Antworten */}
             <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
-              <h2 className="text-2xl font-bold text-white mb-6">Zurückgesetzte Antworten</h2>
-              {loading ? (
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white">Zurückgesetzte Antworten</h2>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleResetReset}
+                    disabled={loadingAnswers}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    Alle aus der Datenbank löschen
+                  </Button>
+                </div>
+              </div>
+              
+              {loadingAnswers ? (
                 <div className="text-center py-12">
                   <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                   <p className="text-white">Lade zurückgesetzte Antworten...</p>

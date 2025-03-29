@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { useAnswers } from "@/lib/hooks/useAnswers"
 import { fetchQuestionType } from "@/lib/hooks/changeQuestionType"
+import { submitBuzz, fetchBuzzers } from "@/lib/hooks/buzz"
 import { supabase } from '@/lib/supabaseClient'
 
 export default function QuizContainer() {
@@ -19,6 +20,7 @@ export default function QuizContainer() {
   const { answers, submitAnswer, loading, error } = useAnswers()
 
   const [questionType, setQuestionType] = useState<string | null>(null)
+  const [buzzerCount, setBuzzerCount] = useState(0)
 
   useEffect(() => {
     const getQuestionType = async () => {
@@ -39,9 +41,9 @@ export default function QuizContainer() {
       .on('postgres_changes', 
         { event: 'UPDATE', schema: 'public', table: 'questiontype' },
         payload => {
-          if (payload.new.id === 1) { // Check if the updated row is the one we care about
+          if (payload.new.id === 1) {
             console.log("Question type updated:", payload.new.questiontype);
-            setQuestionType(payload.new.questiontype); // Update state with the new question type
+            setQuestionType(payload.new.questiontype);
           }
         }
       )
@@ -49,15 +51,57 @@ export default function QuizContainer() {
 
     // Cleanup subscription on unmount
     return () => {
-      questionTypeChannel.unsubscribe(); // Use unsubscribe to clean up the subscription
+      questionTypeChannel.unsubscribe();
     }
   }, [])
+
+  // Function to fetch the current buzzer count from Supabase
+  const fetchBuzzerCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('buzzers')
+        .select('*', { count: 'exact' }); // Fetch the count of rows
+
+      if (error) throw error;
+
+      setBuzzerCount(count ?? 0); // Use nullish coalescing to default to 0 if count is null
+    } catch (err) {
+      console.error("Error fetching buzzer count:", err);
+    }
+  };
+
+  // Fetch initial buzzer count on mount
+  useEffect(() => {
+    fetchBuzzerCount(); // Fetch initial buzzer count
+
+    // Set up a channel to listen for changes in the buzzers table
+    const buzzerChannel = supabase
+      .channel('buzzers_channel')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'buzzers' },
+        () => {
+          fetchBuzzerCount(); // Fetch count again on new buzzer
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'DELETE', schema: 'public', table: 'buzzers' },
+        () => {
+          fetchBuzzerCount(); // Fetch count again on deletion
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      buzzerChannel.unsubscribe(); // Use unsubscribe to clean up the subscription
+    };
+  }, []); // Empty dependency array to run only on mount
 
   const questionTypeIsNormal = (questionType === "normal")
   const questionTypeIsBuzzer = (questionType === "buzzer")
   const questionTypeIsNothing = (questionType === "nichts")
 
-  // Check if user has already submitted
+  // Check if user has already submitted an answer
   const hasSubmitted = answers.some(answer => answer.username === username)
   const answerCount = answers.length
 
@@ -111,9 +155,15 @@ export default function QuizContainer() {
         {/* Benutzername und Antwortanzahl anzeigen */}
         <div className="space-y-2">
           <p className="text-white/80 text-lg">hey {username} was geht</p>
-          <p className="text-white/60">
-            {answerCount} {answerCount === 1 ? "Antwort" : "Antworten"} bisher
-          </p>
+          {questionTypeIsBuzzer ? (
+            <p className="text-white/60">{buzzerCount} Buzzer bisher</p>
+          ) : questionTypeIsNormal ? (
+            <p className="text-white/60">
+              {answerCount} {answerCount === 1 ? "Antwort" : "Antworten"} bisher
+            </p>
+          ) : (
+            <></>
+          )}
         </div>
       </div>
 
@@ -147,14 +197,14 @@ export default function QuizContainer() {
                   value={userAnswer}
                   onChange={(e) => setUserAnswer(e.target.value)}
                   className="bg-black/30 border-purple-500/30 text-white placeholder:text-gray-400 h-14 px-4 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
-                  disabled={loading || isSubmitting}
+                  disabled={isSubmitting || hasSubmitted}
                 />
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 -z-10"></div>
               </div>
 
               <Button
                 type="submit"
-                disabled={!userAnswer.trim() || loading || isSubmitting}
+                disabled={!userAnswer.trim() || isSubmitting || hasSubmitted}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 h-14 text-lg font-semibold rounded-xl transition-all duration-300 disabled:opacity-50"
               >
                 {isSubmitting ? "Wird gesendet..." : "Antwort absenden"}
@@ -165,11 +215,19 @@ export default function QuizContainer() {
           )
         ) : questionTypeIsBuzzer ? (
           <div className="text-center py-6">
-            <img src="/app/quiz/buzzer.png" alt="Buzzer" className="w-full h-auto" />
+            <button 
+              className="relative rounded-full overflow-hidden transition-all duration-300 transform hover:scale-105 active:scale-95 group"
+              onClick={() => {
+                console.log("Buzzurrrr");
+                submitBuzz(username);
+              }}
+            >
+              <img src="/buzzer.png" alt="Buzzer" className="w-full h-auto relative z-10 transition-all duration-300 group-hover:brightness-110 group-active:brightness-90" />
+            </button>
           </div>
         ) : questionTypeIsNothing ? (
           <div className="text-center py-6">
-            <h2 className="text-2xl font-bold text-white mb-4">Warte korz</h2>
+            <h2 className="text-2xl font-bold text-white mb-4">Warte auf die Admins...</h2>
             <p className="text-white/70 mb-6">
               Coco Quiz 🔥
             </p>

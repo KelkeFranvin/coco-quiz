@@ -51,17 +51,6 @@ export const useAnswers = () => {
   // Submit a new answer
   const submitAnswer = async (username: string, answer: string) => {
     try {
-      // Check for existing answer
-      const { data: existing } = await supabase
-        .from('answers')
-        .select('*')
-        .eq('username', username)
-        .single()
-
-      if (existing) {
-        throw new Error('You have already submitted an answer')
-      }
-
       const { data, error } = await supabase
         .from('answers')
         .insert([{
@@ -167,6 +156,58 @@ export const useAnswers = () => {
     }
   }
 
+  const handleResetReset = async () => {
+    try {
+      console.log("Fetching answers to reset...");
+      const { data: answersToReset, error: fetchError } = await supabase
+        .from('reset_answers')
+        .select('*');
+
+      if (fetchError) {
+        console.error('Error fetching answers:', fetchError);
+        throw fetchError;
+      }
+
+      console.log("Fetched answers:", answersToReset);
+
+      if (answersToReset && answersToReset.length > 0) {
+        console.log("Inserting answers into reset_reset_answers...");
+        const { error: insertError } = await supabase
+          .from('reset_reset_answers')
+          .insert(
+            answersToReset.map(answer => ({
+              ...answer,
+              resetResetTimestamp: new Date().toISOString()
+            }))
+          );
+
+        if (insertError) {
+          console.error('Error inserting to reset_reset_answers:', insertError);
+          throw insertError;
+        }
+
+        console.log("Successfully inserted answers.");
+
+        console.log("Deleting from reset_answers...");
+        const { error: deleteError } = await supabase
+          .from('reset_answers')
+          .delete()
+          .in('id', answersToReset.map(answer => answer.id));
+
+        if (deleteError) {
+          console.error('Error deleting from reset_answers:', deleteError);
+          throw deleteError;
+        }
+
+        console.log("Successfully deleted answers.");
+        await fetchAnswers(); // Refresh both lists
+      }
+    } catch (err) {
+      console.error('Reset reset error:', err);
+      throw err instanceof Error ? err : new Error('Failed to reset reset answers');
+    }
+  }
+
   // Set up real-time subscriptions
   useEffect(() => {
     // Subscribe to changes in the answers table
@@ -204,6 +245,7 @@ export const useAnswers = () => {
     error,
     submitAnswer,
     handleReset,
+    handleResetReset,
     resetIndividualAnswer,
     refreshAnswers: fetchAnswers
   }
