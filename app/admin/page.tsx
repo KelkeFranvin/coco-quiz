@@ -17,6 +17,7 @@ export default function AdminPage() {
   const { answers, resetAnswersList, loading: loadingAnswers, handleReset, resetIndividualAnswer, handleResetReset } = useAnswers()
   const [buzzers, setBuzzers] = useState<buzzer[]>([])
   const [loadingBuzzers, setLoadingBuzzers] = useState(true)
+  const [buzzerCounts, setBuzzerCounts] = useState<{ [key: string]: number }>({})
 
   // Fetch buzzers on component mount
   useEffect(() => {
@@ -24,6 +25,14 @@ export default function AdminPage() {
       setLoadingBuzzers(true)
       const fetchedBuzzers = await fetchBuzzers()
       setBuzzers(fetchedBuzzers)
+
+      // Count the number of presses for each user
+      const counts: { [key: string]: number } = {}
+      fetchedBuzzers.forEach(buzzer => {
+        counts[buzzer.username] = (counts[buzzer.username] || 0) + 1
+      })
+      setBuzzerCounts(counts)
+
       setLoadingBuzzers(false)
     }
 
@@ -39,6 +48,12 @@ export default function AdminPage() {
         (payload) => {
           console.log('New buzzer added:', payload)
           const newBuzzer = payload.new as buzzer
+
+          // Update buzzer counts
+          setBuzzerCounts((prevCounts) => ({
+            ...prevCounts,
+            [newBuzzer.username]: (prevCounts[newBuzzer.username] || 0) + 1
+          }))
 
           // Check if the username already exists in the current buzzers
           setBuzzers((prevBuzzers) => {
@@ -94,6 +109,13 @@ export default function AdminPage() {
     await resetIndividualBuzzer(buzzerUsername)
     const fetchedBuzzers = await fetchBuzzers()
     setBuzzers(fetchedBuzzers)
+
+    // Reset the count for the specific buzzer
+    setBuzzerCounts((prevCounts) => ({
+        ...prevCounts,
+        [buzzerUsername]: 0 // Reset the count for the specific user
+    }))
+    
     setLoadingBuzzers(false)
   }
 
@@ -101,6 +123,7 @@ export default function AdminPage() {
     setLoadingBuzzers(true)
     await resetAllBuzzer()
     setBuzzers([])
+    setBuzzerCounts({})
     setLoadingBuzzers(false)
   }
 
@@ -295,23 +318,28 @@ export default function AdminPage() {
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="text-white font-semibold">{buzzer.username}</h3>
-                          <img width={100} src="/buzzer.png"/>
+                          <div className="relative">
+                            <img width={100} src="/buzzer.png" alt="Buzzer" />
+                            <span className="absolute top-1/3 left-1/3 transform -translate-x-1/2 -translate-y-1/2 text-white text-xl font-bold rounded-full px-1">
+                              {buzzerCounts[buzzer.username] || 0}
+                            </span>
+                          </div>
                           <p className="text-gray-500 text-sm mt-2">
                             {(() => {
-                                const date = new Date(buzzer.timestamp);
-                                const options: Intl.DateTimeFormatOptions = {
-                                    timeZone: 'Europe/Berlin',
-                                    year: 'numeric',
-                                    month: '2-digit',
-                                    day: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    second: '2-digit',
-                                    hour12: false // Use 24-hour format
-                                };
-                                const formattedDate = date.toLocaleString('de-DE', options);
-                                const milliseconds = date.getMilliseconds().toString().padStart(3, '0'); // Get milliseconds and pad to 3 digits
-                                return `${formattedDate}.${milliseconds}`; // Combine date and milliseconds
+                              const date = new Date(buzzer.timestamp);
+                              const options: Intl.DateTimeFormatOptions = {
+                                timeZone: 'Europe/Berlin',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: false // Use 24-hour format
+                              };
+                              const formattedDate = date.toLocaleString('de-DE', options);
+                              const milliseconds = date.getMilliseconds().toString().padStart(3, '0'); // Get milliseconds and pad to 3 digits
+                              return `${formattedDate}.${milliseconds}`; // Combine date and milliseconds
                             })()}
                           </p>
                         </div>
