@@ -9,6 +9,7 @@ import { useAnswers } from "@/lib/hooks/useAnswers"
 import { fetchQuestionType } from "@/lib/hooks/changeQuestionType"
 import { submitBuzz } from "@/lib/hooks/buzz"
 import { supabase } from '@/lib/supabaseClient'
+import { fetchLeaderboard, LeaderboardEntry } from '@/lib/hooks/leaderboard'
 
 export default function QuizContainer() {
   const [userAnswer, setUserAnswer] = useState("")
@@ -21,6 +22,7 @@ export default function QuizContainer() {
 
   const [questionType, setQuestionType] = useState<string | null>(null)
   const [buzzerCount, setBuzzerCount] = useState(0)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
 
   useEffect(() => {
     const getQuestionType = async () => {
@@ -122,6 +124,33 @@ export default function QuizContainer() {
       inputRef.current.focus()
     }
   }, [hasSubmitted])
+
+  // Fetch leaderboard entries on mount and set up real-time updates
+  useEffect(() => {
+    const getLeaderboard = async () => {
+      const entries = await fetchLeaderboard();
+      setLeaderboard(entries);
+    };
+    getLeaderboard();
+
+    // Subscribe to real-time updates for leaderboard
+    const leaderboardSubscription = supabase
+      .channel('leaderboard_channel')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'leaderboard' },
+        () => getLeaderboard() // Refresh leaderboard on new entry
+      )
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'leaderboard' },
+        () => getLeaderboard() // Refresh leaderboard on update
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(leaderboardSubscription);
+    };
+  }, []);
 
   // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
@@ -239,6 +268,23 @@ export default function QuizContainer() {
               Das nicht normal 💀 (sag mal Kelvin Bescheid)
             </p>
           </div>
+        )}
+      </div>
+
+      {/* Display Leaderboard */}
+      <div className="mt-8 p-4 bg-black/30 rounded-xl border border-white/20 shadow-lg">
+        <h2 className="text-xl font-bold text-white mb-4">Leaderboard</h2>
+        {leaderboard.length === 0 ? (
+          <p className="text-gray-300">Noch keine Runde gespielt hahaha</p>
+        ) : (
+          <ul>
+            {leaderboard.map((entry) => (
+              <li key={entry.id} className="flex justify-between text-white py-1 border-b border-white/10">
+                <span>{entry.username}</span>
+                <span>{entry.score}</span>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>

@@ -9,6 +9,7 @@ import { useAnswers } from "@/lib/hooks/useAnswers"
 import { changeQuestionType } from "@/lib/hooks/changeQuestionType"
 import { fetchBuzzers, buzzer, resetIndividualBuzzer, resetAllBuzzer } from "@/lib/hooks/buzz"
 import { supabase } from "@/lib/supabaseClient"
+import { fetchLeaderboard, updateLeaderboardEntry, insertLeaderboardEntry, LeaderboardEntry } from '@/lib/hooks/leaderboard';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -18,6 +19,60 @@ export default function AdminPage() {
   const [buzzers, setBuzzers] = useState<buzzer[]>([])
   const [loadingBuzzers, setLoadingBuzzers] = useState(true)
   const [buzzerCounts, setBuzzerCounts] = useState<{ [key: string]: number }>({})
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [editingEntry, setEditingEntry] = useState<LeaderboardEntry | null>(null);
+  const [newScore, setNewScore] = useState<number>(0);
+  const [newUsername, setNewUsername] = useState<string>("");
+
+  // Fetch leaderboard on mount and set up real-time updates
+  useEffect(() => {
+    const getLeaderboard = async () => {
+      const entries = await fetchLeaderboard();
+      setLeaderboard(entries);
+    };
+    getLeaderboard();
+
+    // Subscribe to real-time updates for leaderboard
+    const leaderboardSubscription = supabase
+      .channel('leaderboard_channel')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'leaderboard' },
+        () => getLeaderboard() // Refresh leaderboard on new entry
+      )
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'leaderboard' },
+        () => getLeaderboard() // Refresh leaderboard on update
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(leaderboardSubscription);
+    };
+  }, []);
+
+  const handleUpdateLeaderboard = async (id: number) => {
+    const updated = await updateLeaderboardEntry(id, newScore);
+    if (updated) {
+      // Update local state with new score
+      setLeaderboard((prev) =>
+        prev.map((entry) =>
+          entry.id === id ? { ...entry, score: updated.score } : entry
+        )
+      );
+      setEditingEntry(null);
+    }
+  };
+
+  const handleAddLeaderboardEntry = async () => {
+    if (!newUsername || newScore <= 0) return;
+    const newEntry = await insertLeaderboardEntry(newUsername, newScore);
+    if (newEntry) {
+      setLeaderboard((prev) => [...prev, newEntry]);
+      setNewUsername("");
+      setNewScore(0);
+    }
+  };
 
   // Fetch buzzers on component mount
   useEffect(() => {
@@ -358,6 +413,76 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+
+            {isAuthenticated && (
+              <div className="mt-8 backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-lg p-8 w-full max-w-4xl">
+                <h2 className="text-2xl font-bold text-white mb-4">Leaderboard Verwaltung</h2>
+                
+                {/* Add Entry Section */}
+                <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <Input
+                    type="text"
+                    placeholder="Benutzername"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    className="bg-black/30 border-purple-500/30 text-white"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Punkte"
+                    value={newScore}
+                    onChange={(e) => setNewScore(parseInt(e.target.value, 10) || 0)}
+                    className="w-20 bg-black/30 border-purple-500/30 text-white"
+                  />
+                  <Button onClick={handleAddLeaderboardEntry} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                    Eintrag hinzufügen
+                  </Button>
+                </div>
+
+                {leaderboard.length === 0 ? (
+                  <p className="text-gray-300">Noch keine Leaderboard-Einträge</p>
+                ) : (
+                  <ul className="space-y-4">
+                    {leaderboard.map((entry) => (
+                      <li key={entry.id} className="flex items-center justify-between border-b border-white/10 pb-2">
+                        <span className="text-white">{entry.username}</span>
+                        {editingEntry?.id === entry.id ? (
+                          <>
+                            <Input
+                              type="number"
+                              value={newScore}
+                              onChange={(e) => setNewScore(parseInt(e.target.value, 10))}
+                              className="w-20 bg-black/30 border-purple-500/30 text-white mr-2"
+                            />
+                            <Button onClick={() => setEditingEntry(null)} variant="outline" className="ml-2">
+                              Abbrechen
+                            </Button>
+                            <Button onClick={() => handleUpdateLeaderboard(entry.id)}>
+                              Speichern
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-white">{entry.score}</span>
+                            <Button
+                              onClick={() => {
+                                setEditingEntry(entry);
+                                setNewScore(entry.score);
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="ml-4 bg-black/30 border-white/20 text-white hover:bg-white/10"
+                            >
+                              Bearbeiten
+                            </Button>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             {/* Zurückgesetzte Antworten */}
             <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
