@@ -211,6 +211,10 @@ export default function QuizContainer() {
             <p className="text-white/60">
               {answerCount} {answerCount === 1 ? "Antwort" : "Antworten"} bisher
             </p>
+          ) : questionTypeIsMultipleChoice ? (
+            <p className="text-white/60">
+              {answerCount} {answerCount === 1 ? "Antwort" : "Antworten"} bisher
+            </p>
           ) : (
             <></>
           )}
