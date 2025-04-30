@@ -10,6 +10,7 @@ import { changeQuestionType } from "@/lib/hooks/changeQuestionType"
 import { fetchBuzzers, buzzer, resetIndividualBuzzer, resetAllBuzzer } from "@/lib/hooks/buzz"
 import { supabase } from "@/lib/supabaseClient"
 import { fetchLeaderboard, updateLeaderboardEntry, insertLeaderboardEntry, LeaderboardEntry } from '@/lib/hooks/leaderboard';
+import { animation } from "@/lib/hooks/animation";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -204,36 +205,74 @@ export default function AdminPage() {
           <div className="flex space-x-2">
             {isAuthenticated && (
               <>
-                <Button
-                  onClick={() => changeQuestionType("nichts")}
-                  variant="outline"
-                  className="bg-black/30 border-white/20 text-white hover:bg-white/10"
-                >
-                  Gar nichts
-                </Button>
-                <Button
-                  onClick={() => changeQuestionType("buzzer")}
-                  variant="outline"
-                  className="bg-black/30 border-white/20 text-white hover:bg-white/10"
-                >
-                  Buzzer
-                </Button>
-                <Button
-                  onClick={() => changeQuestionType("normal")}
-                  variant="outline"
-                  className="bg-black/30 border-white/20 text-white hover:bg-white/10"
-                >
-                  Normal
-                </Button>
-                <Button
-                  onClick={() => changeQuestionType("multiplechoice")}
-                  variant="outline"
-                  className="bg-black/30 border-white/20 text-white hover:bg-white/10"
-                >
-                  Multi Choice
-                </Button>
-              </>
-            )}
+              {/* Parent: flex-col sorgt dafür, dass die beiden Gruppen untereinander stehen */}
+              <div className="flex flex-col space-y-4">
+                {/* Erste Zeile */}
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => changeQuestionType("nichts")}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    Gar nichts
+                  </Button>
+                  <Button
+                    onClick={() => changeQuestionType("buzzer")}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    Buzzer
+                  </Button>
+                  <Button
+                    onClick={() => changeQuestionType("normal")}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    Normal
+                  </Button>
+                  <Button
+                    onClick={() => changeQuestionType("multiplechoice")}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    Multi Choice
+                  </Button>
+                </div>
+            
+                {/* Zweite Zeile (steht jetzt automatisch unter der ersten) */}
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => animation("100")}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    100
+                  </Button>
+                  <Button
+                    onClick={() => animation("200")}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    200
+                  </Button>
+                  <Button
+                    onClick={() => animation("300")}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    300
+                  </Button>
+                  <Button
+                    onClick={() => animation("400")}
+                    variant="outline"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                  >
+                    400
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
           </div>
           <Button
             onClick={handleLogout}

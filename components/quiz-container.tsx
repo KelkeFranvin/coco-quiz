@@ -10,6 +10,7 @@ import { fetchQuestionType } from "@/lib/hooks/changeQuestionType"
 import { submitBuzz } from "@/lib/hooks/buzz"
 import { supabase } from '@/lib/supabaseClient'
 import { fetchLeaderboard, LeaderboardEntry } from '@/lib/hooks/leaderboard'
+import { fetchAnimation } from "@/lib/hooks/animation"
 
 export default function QuizContainer() {
   const [userAnswer, setUserAnswer] = useState("")
@@ -21,6 +22,7 @@ export default function QuizContainer() {
   const { answers, submitAnswer, error } = useAnswers()
 
   const [questionType, setQuestionType] = useState<string | null>(null)
+  const [animation, setAnimation] = useState<string | null>(null)
   const [buzzerCount, setBuzzerCount] = useState(0)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
 
@@ -54,6 +56,39 @@ export default function QuizContainer() {
     // Cleanup subscription on unmount
     return () => {
       questionTypeChannel.unsubscribe();
+    }
+  }, [])
+
+  useEffect(() => {
+    const getAnimation = async () => {
+      const data = await fetchAnimation()
+      if (data && data.length > 0) {
+        console.log("Setting animation to:", data[0].questiontype)
+        setQuestionType(data[0].questiontype)
+      } else {
+        console.log("No animation data found or data is empty.")
+      }
+    }
+
+    getAnimation()
+
+    // Set up a channel to listen for changes in the animation table
+    const animationChannel = supabase
+      .channel('animation_channel')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'animation' },
+        payload => {
+          if (payload.new.id === 1) {
+            console.log("Animation updated:", payload.new.animation);
+            setAnimation(payload.new.animation);
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      animationChannel.unsubscribe();
     }
   }, [])
 
@@ -103,6 +138,11 @@ export default function QuizContainer() {
   const questionTypeIsBuzzer = (questionType === "buzzer")
   const questionTypeIsNothing = (questionType === "nichts")
   const questionTypeIsMultipleChoice = (questionType === "multiplechoice")
+
+  const animation100 = (animation === "100")
+  const animation200 = (animation === "200")
+  const animation300 = (animation === "300")
+  const animation400 = (animation === "400")
 
   // Check if user has already submitted an answer
   const hasSubmitted = answers.some(answer => answer.username === username)
@@ -222,6 +262,27 @@ export default function QuizContainer() {
       </div>
 
       <div className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-[0_0_40px_rgba(192,132,252,0.15)] p-8">
+        {/* Display the image when animation100 is true */}
+        {animation100 && (
+          <div className="fixed inset-0 flex items-center justify-center z-20">
+            <img src="/100.png" alt="Animation" className="w-1/2 h-auto floating-image" />
+          </div>
+        )}
+        {animation200 && (
+          <div className="fixed inset-0 flex items-center justify-center z-20">
+            <img src="/200.png" alt="Animation" className="w-1/2 h-auto floating-image" />
+          </div>
+        )}
+        {animation300 && (
+          <div className="fixed inset-0 flex items-center justify-center z-20">
+            <img src="/300.png" alt="Animation" className="w-1/2 h-auto floating-image" />
+          </div>
+        )}
+        {animation400 && (
+          <div className="fixed inset-0 flex items-center justify-center z-20">
+            <img src="/400.png" alt="Animation" className="w-1/2 h-auto floating-image" />
+          </div>
+        )}
         {questionTypeIsNormal ? (
           hasSubmitted ? (
             <div className="text-center py-6">

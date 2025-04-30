@@ -134,3 +134,22 @@
 .animate-fly-up {
   animation: fly-up 1s forwards;
 }
+
+@keyframes float {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-30px) scale(3);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-60px) scale(4);
+    opacity: 0;
+  }
+}
+
+.floating-image {
+  animation: float 2s ease forwards;
+}
