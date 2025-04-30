@@ -119,3 +119,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes fly-up {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+}
+
+.animate-fly-up {
+  animation: fly-up 1s forwards;
+}

@@ -102,6 +102,7 @@ export default function QuizContainer() {
   const questionTypeIsNormal = (questionType === "normal")
   const questionTypeIsBuzzer = (questionType === "buzzer")
   const questionTypeIsNothing = (questionType === "nichts")
+  const questionTypeIsMultipleChoice = (questionType === "multiplechoice")
 
   // Check if user has already submitted an answer
   const hasSubmitted = answers.some(answer => answer.username === username)
@@ -164,6 +165,26 @@ export default function QuizContainer() {
 
     try {
       await submitAnswer(username, userAnswer)
+      setUserAnswer("")
+    } catch (error) {
+      console.error("Error submitting answer:", error)
+      alert(error instanceof Error ? error.message : "Failed to submit answer")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleMultipleChoice = async (answer: string) => {
+    if (!answer.trim() || isSubmitting || hasSubmitted) {
+      return
+    }
+
+    setIsSubmitting(true)
+
+    answer = "Multiple Choice: " + answer
+
+    try {
+      await submitAnswer(username, answer)
       setUserAnswer("")
     } catch (error) {
       console.error("Error submitting answer:", error)
@@ -261,6 +282,56 @@ export default function QuizContainer() {
               Coco Quiz 🔥
             </p>
           </div>
+        ) : questionTypeIsMultipleChoice ? (
+            hasSubmitted ? (
+              <div className="text-center py-6">
+                <h2 className="text-2xl font-bold text-white mb-4">Antwort abgegeben :)</h2>
+                <p className="text-white/70 mb-6">
+                  Geil du hast eine Antwort abgegeben (musst jetzt auf admins warten)
+                </p>
+                <div className="w-24 h-24 mx-auto mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    className="text-green-400 w-full h-full"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+            ) : (
+            <div className="text-center py-6">
+              <h2 className="text-2xl font-bold text-white mb-4">Multiple Choice</h2>
+              <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+                <Button 
+                  onClick={() => handleMultipleChoice('A')}
+                  className="bg-black/30 border-purple-500/30 text-white hover:bg-white/10 h-16 text-lg font-semibold active:bg-black/50 focus:bg-black/50"
+                >
+                  A
+                </Button>
+                <Button 
+                  onClick={() => handleMultipleChoice('B')}
+                  className="bg-black/30 border-purple-500/30 text-white hover:bg-white/10 h-16 text-lg font-semibold active:bg-black/50 focus:bg-black/50"
+                >
+                  B
+                </Button>
+                <Button 
+                  onClick={() => handleMultipleChoice('C')}
+                  className="bg-black/30 border-purple-500/30 text-white hover:bg-white/10 h-16 text-lg font-semibold active:bg-black/50 focus:bg-black/50"
+                >
+                  C
+                </Button>
+                <Button 
+                  onClick={() => handleMultipleChoice('D')}
+                  className="bg-black/30 border-purple-500/30 text-white hover:bg-white/10 h-16 text-lg font-semibold active:bg-black/50 focus:bg-black/50"
+                >
+                  D
+                </Button>
+              </div>
+            </div>
+          )
         ) : (
           <div className="text-center py-6">
             <h2 className="text-2xl font-bold text-white mb-4">Öhhh</h2>
@@ -290,4 +361,3 @@ export default function QuizContainer() {
     </div>
   )
 }
-
