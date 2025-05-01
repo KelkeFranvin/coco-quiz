@@ -11,7 +11,7 @@ import { submitBuzz } from "@/lib/hooks/buzz"
 import { supabase } from '@/lib/supabaseClient'
 import { fetchLeaderboard, LeaderboardEntry } from '@/lib/hooks/leaderboard'
 import { fetchAnimation } from "@/lib/hooks/animation"
-import { Question } from "@/lib/hooks/useQuestions"
+//import { Question } from "@/lib/hooks/useQuestions"
 
 export default function QuizContainer() {
   const [userAnswer, setUserAnswer] = useState("")
@@ -150,10 +150,6 @@ export default function QuizContainer() {
   // Check if user has already submitted an answer
   const hasSubmitted = answers.some(answer => answer.username === username)
   const answerCount = answers.length
-
-  console.log("Answers:", answers);
-  console.log("Has Submitted:", hasSubmitted);
-  console.log("Answer Count:", answerCount);
 
   // Fetch the current question and show_question status
   const fetchCurrentQuestion = async () => {
