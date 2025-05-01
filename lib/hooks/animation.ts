@@ -14,7 +14,7 @@ export const animation = async (animation: string) => {
 
         await sleep(2000)
 
-        const { data: resetData, error: resetError } = await supabase
+        const { error: resetError } = await supabase
             .from('animation')
             .update({ animation: "Sigma sigma boy" })
             .eq('id', 1)
