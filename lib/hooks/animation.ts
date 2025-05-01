@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { sleep } from '../utils'
 
 export const animation = async (animation: string) => {
     try {
@@ -10,6 +11,17 @@ export const animation = async (animation: string) => {
             .single()
 
         if (error) throw error
+
+        await sleep(2000)
+
+        const { data: resetData, error: resetError } = await supabase
+            .from('animation')
+            .update({ animation: "Sigma sigma boy" })
+            .eq('id', 1)
+            .select()
+            .single()
+
+        if (resetError) throw resetError
 
         return data
     } catch (err) {

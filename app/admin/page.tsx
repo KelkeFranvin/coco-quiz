@@ -242,30 +242,74 @@ export default function AdminPage() {
                 {/* Zweite Zeile (steht jetzt automatisch unter der ersten) */}
                 <div className="flex space-x-2">
                   <Button
-                    onClick={() => animation("100")}
+                    onClick={async () => {
+                      const animationButtons = document.querySelectorAll<HTMLButtonElement>('.animation-button');
+                      animationButtons.forEach((button) => {
+                        (button as HTMLButtonElement).disabled = true;
+                      });
+                      await animation("100");
+                      setTimeout(() => {
+                        animationButtons.forEach((button) => {
+                          (button as HTMLButtonElement).disabled = false;
+                        });
+                      }, 1000);
+                    }}
                     variant="outline"
-                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10 animation-button"
                   >
                     100
                   </Button>
                   <Button
-                    onClick={() => animation("200")}
+                    onClick={async () => {
+                      const animationButtons = document.querySelectorAll<HTMLButtonElement>('.animation-button');
+                      animationButtons.forEach((button) => {
+                        (button as HTMLButtonElement).disabled = true;
+                      });
+                      await animation("200");
+                      setTimeout(() => {
+                        animationButtons.forEach((button) => {
+                          (button as HTMLButtonElement).disabled = false;
+                        });
+                      }, 1000);
+                    }}
                     variant="outline"
-                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10 animation-button"
                   >
                     200
                   </Button>
                   <Button
-                    onClick={() => animation("300")}
+                    onClick={async () => {
+                      const animationButtons = document.querySelectorAll<HTMLButtonElement>('.animation-button');
+                      animationButtons.forEach((button) => {
+                        (button as HTMLButtonElement).disabled = true;
+                      });
+                      await animation("300");
+                      setTimeout(() => {
+                        animationButtons.forEach((button) => {
+                          (button as HTMLButtonElement).disabled = false;
+                        });
+                      }, 1000);
+                    }}
                     variant="outline"
-                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10 animation-button"
                   >
                     300
                   </Button>
                   <Button
-                    onClick={() => animation("400")}
+                    onClick={async () => {
+                      const animationButtons = document.querySelectorAll<HTMLButtonElement>('.animation-button');
+                      animationButtons.forEach((button) => {
+                        (button as HTMLButtonElement).disabled = true;
+                      });
+                      await animation("400");
+                      setTimeout(() => {
+                        animationButtons.forEach((button) => {
+                          (button as HTMLButtonElement).disabled = false;
+                        });
+                      }, 1000);
+                    }}
                     variant="outline"
-                    className="bg-black/30 border-white/20 text-white hover:bg-white/10"
+                    className="bg-black/30 border-white/20 text-white hover:bg-white/10 animation-button"
                   >
                     400
                   </Button>
