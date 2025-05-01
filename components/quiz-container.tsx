@@ -234,6 +234,21 @@ export default function QuizContainer() {
     }
   }
 
+  useEffect(() => {
+    // Preload images
+    const images = [
+      "/100.png",
+      "/200.png",
+      "/300.png",
+      "/400.png"
+    ];
+
+    images.forEach((src) => {
+      const img = new Image();
+      img.src = src; // This will preload the image
+    });
+  }, []); // Empty dependency array to run only on mount
+
   return (
     <div className="relative z-10 w-full max-w-md mx-auto">
       <div className="text-center mb-8">
