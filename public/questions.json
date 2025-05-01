@@ -1,0 +1,20 @@
+[
+    {
+        "type": "normal",
+        "question": "Wer ist Sigma?"
+    },
+    {
+        "type": "multiple_choice",
+        "question": "Gyattastisch?",
+        "options": ["Ja", "Nein", "Hell yeah", "Alle Antworten"]
+    },
+    {
+        "type": "normal",
+        "question": "Wer hat den größten Gyat?"
+    },
+    {
+        "type": "multiple_choice",
+        "question": "Wer ist der wichtigste Coco Character?",
+        "options": ["Kelvin", "Elias", "Luis", "Artan"]
+    }
+]

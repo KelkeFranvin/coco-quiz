@@ -25,6 +25,9 @@ export default function QuizContainer() {
   const [animation, setAnimation] = useState<string | null>(null)
   const [buzzerCount, setBuzzerCount] = useState(0)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [, setQuestions] = useState<any[]>([])
+  const [currentQuestion, setCurrentQuestion] = useState<string | null>(null)
+  const [showQuestion, setShowQuestion] = useState<boolean>(false)
 
   useEffect(() => {
     const getQuestionType = async () => {
@@ -148,6 +151,46 @@ export default function QuizContainer() {
   const hasSubmitted = answers.some(answer => answer.username === username)
   const answerCount = answers.length
 
+  console.log("Answers:", answers);
+  console.log("Has Submitted:", hasSubmitted);
+  console.log("Answer Count:", answerCount);
+
+  // Fetch the current question and show_question status
+  const fetchCurrentQuestion = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('question_settings')
+        .select('current_question, show_question')
+        .eq('id', 1) // Assuming the ID of the row to check is 1
+        .single();
+
+      if (error) throw error;
+
+      setCurrentQuestion(data.current_question);
+      setShowQuestion(data.show_question);
+    } catch (err) {
+      console.error("Error fetching current question:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCurrentQuestion();
+
+    // Set up a real-time subscription to the question_settings table
+    const subscription = supabase
+      .channel('question_settings_channel')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'question_settings' },
+        () => fetchCurrentQuestion() // Fetch the current question again on change
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Username check
   useEffect(() => {
     const storedUsername = localStorage.getItem("username")
@@ -192,6 +235,20 @@ export default function QuizContainer() {
       supabase.removeChannel(leaderboardSubscription);
     };
   }, []);
+
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        const response = await fetch('/questions.json');
+        const data = await response.json();
+        setQuestions(data);
+      } catch (error) {
+        console.error("Error fetching questions:", error);
+      }
+    };
+
+    fetchQuestions();
+  }, []); // Empty dependency array to run only on mount
 
   // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
@@ -260,18 +317,19 @@ export default function QuizContainer() {
         {/* Benutzername und Antwortanzahl anzeigen */}
         <div className="space-y-2">
           <p className="text-white/80 text-lg">hey {username} was geht</p>
-          {questionTypeIsBuzzer ? (
+          {/* Always display the current question if show_question is TRUE */}
+          {showQuestion && currentQuestion ? (
+            <p className="text-white text-2xl underline">{currentQuestion}</p>
+          ) : null}
+          {/* Display the answer count only if submitted and question type is normal or multiple choice */}
+          {(questionTypeIsNormal || questionTypeIsMultipleChoice) ? (
+            <p className="text-white/60">
+              {answerCount} {answerCount === 1 ? "Antwort" : "Antworten"} bisher
+            </p>
+          ) : null}
+          {/* Display the buzzer count only for buzzer question type */}
+          {questionTypeIsBuzzer && (
             <p className="text-white/60">{buzzerCount} Buzzer bisher</p>
-          ) : questionTypeIsNormal ? (
-            <p className="text-white/60">
-              {answerCount} {answerCount === 1 ? "Antwort" : "Antworten"} bisher
-            </p>
-          ) : questionTypeIsMultipleChoice ? (
-            <p className="text-white/60">
-              {answerCount} {answerCount === 1 ? "Antwort" : "Antworten"} bisher
-            </p>
-          ) : (
-            <></>
           )}
         </div>
       </div>

@@ -11,6 +11,8 @@ import { fetchBuzzers, buzzer, resetIndividualBuzzer, resetAllBuzzer } from "@/l
 import { supabase } from "@/lib/supabaseClient"
 import { fetchLeaderboard, updateLeaderboardEntry, insertLeaderboardEntry, LeaderboardEntry } from '@/lib/hooks/leaderboard';
 import { animation } from "@/lib/hooks/animation";
+import { useQuestions } from '@/lib/hooks/useQuestions';
+import CustomDropdown from '@/components/CustomDropdown';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -24,6 +26,36 @@ export default function AdminPage() {
   const [editingEntry, setEditingEntry] = useState<LeaderboardEntry | null>(null);
   const [newScore, setNewScore] = useState<number>(0);
   const [newUsername, setNewUsername] = useState<string>("");
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [selectedQuestion, setSelectedQuestion] = useState<string>("");
+
+  // Use the useQuestions hook to fetch questions
+  const { questions: supabaseQuestions, loading: loadingQuestions, error: questionsError } = useQuestions();
+
+  // Function to update the current question in the question_settings table
+  const updateCurrentQuestion = async (question: string) => {
+    try {
+      const showQuestion = question !== "Keine Frage"; // Set show_question based on selection
+      const { data, error } = await supabase
+        .from('question_settings')
+        .update({ current_question: question, show_question: showQuestion })
+        .eq('id', 1) // Assuming the ID of the row to update is 1
+        .select();
+
+      if (error) throw error;
+
+      console.log("Current question updated successfully:", data);
+    } catch (err) {
+      console.error("Error updating current question:", err);
+    }
+  };
+
+  // Effect to update the question when selected
+  useEffect(() => {
+    if (selectedQuestion) {
+      updateCurrentQuestion(selectedQuestion);
+    }
+  }, [selectedQuestion]);
 
   // Fetch leaderboard on mount and set up real-time updates
   useEffect(() => {
@@ -183,6 +215,21 @@ export default function AdminPage() {
     setLoadingBuzzers(false)
   }
 
+  // Fetch questions on component mount
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        const response = await fetch('/questions.json');
+        const data = await response.json();
+        setQuestions(data);
+      } catch (error) {
+        console.error("Error fetching questions:", error);
+      }
+    };
+
+    fetchQuestions();
+  }, []); // Empty dependency array to run only on mount
+
   return (
     <main className="min-h-screen bg-black flex flex-col items-center justify-start p-4 overflow-hidden">
       {/* Hintergrund */}
@@ -200,6 +247,14 @@ export default function AdminPage() {
           </h1>
           <div className="h-1 w-32 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto rounded-full mb-4"></div>
         </div>
+
+        {/* Custom Dropdown for questions */}
+        <CustomDropdown
+          options={["Keine Frage", ...supabaseQuestions.map(q => q.question)]}
+          selectedOption={selectedQuestion}
+          onSelect={setSelectedQuestion}
+          label="Frage stellen"
+        />
 
         <div className="flex justify-between mb-8">
           <div className="flex space-x-2">
