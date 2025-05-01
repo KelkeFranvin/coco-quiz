@@ -11,6 +11,7 @@ import { submitBuzz } from "@/lib/hooks/buzz"
 import { supabase } from '@/lib/supabaseClient'
 import { fetchLeaderboard, LeaderboardEntry } from '@/lib/hooks/leaderboard'
 import { fetchAnimation } from "@/lib/hooks/animation"
+import { Question } from "@/lib/hooks/useQuestions"
 
 export default function QuizContainer() {
   const [userAnswer, setUserAnswer] = useState("")
@@ -25,7 +26,7 @@ export default function QuizContainer() {
   const [animation, setAnimation] = useState<string | null>(null)
   const [buzzerCount, setBuzzerCount] = useState(0)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
-  const [, setQuestions] = useState<any[]>([])
+  const [questions, setQuestions] = useState<Question[]>([])
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null)
   const [showQuestion, setShowQuestion] = useState<boolean>(false)
 
@@ -240,7 +241,7 @@ export default function QuizContainer() {
     const fetchQuestions = async () => {
       try {
         const response = await fetch('/questions.json');
-        const data = await response.json();
+        const data: Question[] = await response.json();
         setQuestions(data);
       } catch (error) {
         console.error("Error fetching questions:", error);
@@ -248,7 +249,7 @@ export default function QuizContainer() {
     };
 
     fetchQuestions();
-  }, []); // Empty dependency array to run only on mount
+  }, []);
 
   // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {

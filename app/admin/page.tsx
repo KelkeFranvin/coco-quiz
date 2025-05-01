@@ -26,11 +26,10 @@ export default function AdminPage() {
   const [editingEntry, setEditingEntry] = useState<LeaderboardEntry | null>(null);
   const [newScore, setNewScore] = useState<number>(0);
   const [newUsername, setNewUsername] = useState<string>("");
-  const [questions, setQuestions] = useState<any[]>([]);
   const [selectedQuestion, setSelectedQuestion] = useState<string>("");
 
   // Use the useQuestions hook to fetch questions
-  const { questions: supabaseQuestions, loading: loadingQuestions, error: questionsError } = useQuestions();
+  const { questions: supabaseQuestions } = useQuestions();
 
   // Function to update the current question in the question_settings table
   const updateCurrentQuestion = async (question: string) => {
@@ -214,21 +213,6 @@ export default function AdminPage() {
     setBuzzerCounts({})
     setLoadingBuzzers(false)
   }
-
-  // Fetch questions on component mount
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        const response = await fetch('/questions.json');
-        const data = await response.json();
-        setQuestions(data);
-      } catch (error) {
-        console.error("Error fetching questions:", error);
-      }
-    };
-
-    fetchQuestions();
-  }, []); // Empty dependency array to run only on mount
 
   return (
     <main className="min-h-screen bg-black flex flex-col items-center justify-start p-4 overflow-hidden">
