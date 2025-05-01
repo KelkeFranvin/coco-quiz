@@ -26,7 +26,6 @@ export default function QuizContainer() {
   const [animation, setAnimation] = useState<string | null>(null)
   const [buzzerCount, setBuzzerCount] = useState(0)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
-  const [questions, setQuestions] = useState<Question[]>([])
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null)
   const [showQuestion, setShowQuestion] = useState<boolean>(false)
 
@@ -235,20 +234,6 @@ export default function QuizContainer() {
     return () => {
       supabase.removeChannel(leaderboardSubscription);
     };
-  }, []);
-
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        const response = await fetch('/questions.json');
-        const data: Question[] = await response.json();
-        setQuestions(data);
-      } catch (error) {
-        console.error("Error fetching questions:", error);
-      }
-    };
-
-    fetchQuestions();
   }, []);
 
   // Handle submit
